@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'screens/splash/splash_screen.dart';
 import 'screens/auth/auth_screen.dart';
 import 'screens/login/login_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 // Definimos constantes para las rutas de las pantallas para facilitar la navegación y evitar errores tipográficos.
 const String splashScreenRoute = '/splash';
 const String authScreenRoute = '/auth';
 const String loginScreenRoute = '/login';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await FirebaseFirestore.initializeApp();
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
