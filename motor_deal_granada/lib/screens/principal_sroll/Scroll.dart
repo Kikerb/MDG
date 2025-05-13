@@ -1,5 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:motor_deal_granada/firebase_options.dart';
 
 import 'Posts.dart';
 
