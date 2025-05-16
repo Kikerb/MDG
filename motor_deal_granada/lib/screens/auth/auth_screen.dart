@@ -13,13 +13,10 @@ class AuthScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             // Logo de la aplicación
-            const Text(
-              'MotorDealGranada',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-             const Text(
-              'MDG',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+            Image.asset(
+              'assets/image/logo.png', 
+              width: 200, 
+              height: 150, 
             ),
             const SizedBox(height: 20),
             // Botón de Login
@@ -39,7 +36,7 @@ class AuthScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             // Botón de Sign Up
-             ElevatedButton(
+            ElevatedButton(
               onPressed: () {
                 // TODO:  Implementar la lógica de registro.  Por ahora, navegamos al Login.
                 Navigator.of(context).pushNamed(loginScreenRoute);
@@ -48,7 +45,7 @@ class AuthScreen extends StatelessWidget {
                 backgroundColor: Colors.white, // Color blanco
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                 shape: RoundedRectangleBorder(
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
               ),

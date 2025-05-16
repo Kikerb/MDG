@@ -20,10 +20,11 @@ class _LoginScreenState extends State<LoginScreen> {
           email: _emailController.text,
           password: _passwordController.text,
         );
-        // Inicio de sesión exitoso, puedes navegar a otra pantalla o mostrar un mensaje
+        // Inicio de sesión exitoso
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Inicio de sesión exitoso!')),
         );
+        // Aquí podrías navegar a la siguiente pantalla
       } on FirebaseAuthException catch (e) {
         // Manejar errores de Firebase Authentication
         String errorMessage = 'Ocurrió un error.';
@@ -47,6 +48,13 @@ class _LoginScreenState extends State<LoginScreen> {
           key: _formKey,
           child: Column(
             children: <Widget>[
+              // Logo de la aplicación
+              Image.asset(
+                'assets/image/logo.png', 
+                width: 150, 
+                height: 100,
+              ),
+              const SizedBox(height: 20),
               TextFormField(
                 controller: _emailController,
                 decoration: const InputDecoration(labelText: 'Correo Electrónico'),
@@ -68,6 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   return null;
                 },
               ),
+              const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _iniciarSesion,
                 child: const Text('Iniciar Sesión'),

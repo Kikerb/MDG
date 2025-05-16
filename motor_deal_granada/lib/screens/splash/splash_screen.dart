@@ -18,14 +18,11 @@ class SplashScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            // Aquí iría el logo de tu aplicación.  He usado un texto como ejemplo.
-            const Text(
-              'MotorDeal Granada',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+            // Aquí se muestra la imagen del logo desde los assets.
+            Image.asset(
+              'assets/image/logo.png',
+              width: 200, 
+              height: 150, 
             ),
             const SizedBox(height: 16),
             // Puedes agregar un indicador de carga aquí si lo deseas
