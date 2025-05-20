@@ -2,14 +2,18 @@ import 'package:flutter/material.dart';
 import 'screens/splash/splash_screen.dart';
 import 'screens/auth/auth_screen.dart';
 import 'screens/login/login_screen.dart';
+import 'screens/signUp/signUp_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'screens/principal_sroll/Scroll.dart'; 
 
 // Definimos constantes para las rutas de las pantallas para facilitar la navegación y evitar errores tipográficos.
 const String splashScreenRoute = '/splash';
 const String authScreenRoute = '/auth';
 const String loginScreenRoute = '/login';
+const String signUpScreenRoute = '/signUp';
+const String scrollScreenRoute = '/scroll'; 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,12 +35,14 @@ class MyApp extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
         fontFamily: 'Inter',
       ),
-      // Definimos las rutas de la aplicación.  Esto nos permite navegar entre pantallas usando nombres.
+      // Definimos las rutas de la aplicación. Esto nos permite navegar entre pantallas usando nombres.
       initialRoute: splashScreenRoute, // La pantalla de inicio será la de Splash
       routes: {
         splashScreenRoute: (context) => const SplashScreen(),
         authScreenRoute: (context) => const AuthScreen(),
         loginScreenRoute: (context) => const LoginScreen(),
+        signUpScreenRoute: (context) => const SignUpScreen(),
+        scrollScreenRoute: (context) => const ScrollScreen(), 
       },
     );
   }

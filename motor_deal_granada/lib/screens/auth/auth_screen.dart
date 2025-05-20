@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:motor_deal_granada/main.dart';
-
+import 'package:motor_deal_granada/main.dart'; 
 class AuthScreen extends StatelessWidget {
   const AuthScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black, // Fondo negro
+      backgroundColor: Colors.black,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             // Logo de la aplicación
             Image.asset(
-              'assets/image/logo.png', 
-              width: 200, 
-              height: 150, 
+              'assets/image/logo.png',
+              width: 200,
+              height: 150,
             ),
             const SizedBox(height: 20),
             // Botón de Login
@@ -25,7 +24,7 @@ class AuthScreen extends StatelessWidget {
                 Navigator.of(context).pushNamed(loginScreenRoute);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6200EA), // Color morado
+                backgroundColor: const Color(0xFF6200EA),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
                 shape: RoundedRectangleBorder(
@@ -38,11 +37,11 @@ class AuthScreen extends StatelessWidget {
             // Botón de Sign Up
             ElevatedButton(
               onPressed: () {
-                // TODO:  Implementar la lógica de registro.  Por ahora, navegamos al Login.
-                Navigator.of(context).pushNamed(loginScreenRoute);
+                // Navega a la pantalla de registro
+                Navigator.of(context).pushNamed(signUpScreenRoute); 
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white, // Color blanco
+                backgroundColor: Colors.white,
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
                 shape: RoundedRectangleBorder(

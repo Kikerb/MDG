@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 
 import 'Posts.dart';
 
-class Scroll extends StatelessWidget {
+class ScrollScreen extends StatelessWidget {
+  const ScrollScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
