@@ -1,15 +1,17 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'screens/splash/splash_screen.dart';
+
+import 'firebase_options.dart';
 import 'screens/auth/auth_screen.dart';
 import 'screens/login/login_screen.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
+import 'screens/principal_sroll/Scroll.dart';
+import 'screens/splash/splash_screen.dart';
 
 // Definimos constantes para las rutas de las pantallas para facilitar la navegación y evitar errores tipográficos.
 const String splashScreenRoute = '/splash';
 const String authScreenRoute = '/auth';
 const String loginScreenRoute = '/login';
+const String scrollScreenRoute = '/principal_sroll';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +39,7 @@ class MyApp extends StatelessWidget {
         splashScreenRoute: (context) => const SplashScreen(),
         authScreenRoute: (context) => const AuthScreen(),
         loginScreenRoute: (context) => const LoginScreen(),
+        scrollScreenRoute: (context) =>  Scroll(), // no ponemos const ya que es mutable es decir se actualiza en tiempo real datos de esta pestaña
       },
     );
   }
