@@ -1,24 +1,24 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'screens/splash/splash_screen.dart';
+
+import 'firebase_options.dart';
 import 'screens/auth/auth_screen.dart';
 import 'screens/login/login_screen.dart';
-import 'screens/signUp/signUp_screen.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
+import 'screens/signUp/signUp_screen.dart'; 
 import 'screens/principal_sroll/Scroll.dart'; 
+import 'screens/splash/splash_screen.dart';
 
 // Definimos constantes para las rutas de las pantallas para facilitar la navegación y evitar errores tipográficos.
 const String splashScreenRoute = '/splash';
 const String authScreenRoute = '/auth';
 const String loginScreenRoute = '/login';
-const String signUpScreenRoute = '/signUp';
+const String signUpScreenRoute = '/signUp'; 
 const String scrollScreenRoute = '/scroll'; 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform, // <--- Usar configuración generada
+    options: DefaultFirebaseOptions.currentPlatform, // Usar configuración generada
   );
   runApp(const MyApp());
 }
@@ -41,7 +41,7 @@ class MyApp extends StatelessWidget {
         splashScreenRoute: (context) => const SplashScreen(),
         authScreenRoute: (context) => const AuthScreen(),
         loginScreenRoute: (context) => const LoginScreen(),
-        signUpScreenRoute: (context) => const SignUpScreen(),
+        signUpScreenRoute: (context) => const SignUpScreen(), 
         scrollScreenRoute: (context) => const ScrollScreen(), 
       },
     );
