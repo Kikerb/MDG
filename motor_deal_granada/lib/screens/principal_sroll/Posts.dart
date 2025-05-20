@@ -4,7 +4,7 @@ class PostCard extends StatelessWidget {
   final String username, imageUrl, description;
   final int likes, comments, shares;
 
-  const PostCard({
+  const PostCard({super.key, 
     required this.username,
     required this.imageUrl,
     required this.likes,

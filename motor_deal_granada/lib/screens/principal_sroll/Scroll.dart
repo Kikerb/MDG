@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'Posts.dart'; // Asumo que este archivo contiene tu widget PostCard
 
 class Scroll extends StatelessWidget {
+  const Scroll({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
