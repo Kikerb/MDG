@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 
 class PostCard extends StatelessWidget {
-  final String username, imageUrl, description;
-  final int likes, comments, shares;
+  final String username;
+  final String imageUrl;
+  final String description;
+  final int likes;
+  final int comments;
+  final int shares;
 
-  const PostCard({super.key, 
+  const PostCard({
+    super.key,
     required this.username,
     required this.imageUrl,
     required this.likes,
@@ -16,27 +21,36 @@ class PostCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: EdgeInsets.all(12),
+      margin: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ListTile(title: Text(username), leading: Icon(Icons.account_circle)),
+          ListTile(
+            title: Text(username),
+            leading: const Icon(Icons.account_circle),
+          ),
           Image.network(imageUrl, fit: BoxFit.cover),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
               children: [
-                Icon(Icons.favorite), SizedBox(width: 4), Text('$likes'),
-                SizedBox(width: 16),
-                Icon(Icons.comment), SizedBox(width: 4), Text('$comments'),
-                SizedBox(width: 16),
-                Icon(Icons.send), SizedBox(width: 4), Text('$shares'),
+                const Icon(Icons.favorite),
+                const SizedBox(width: 4),
+                Text('$likes'),
+                const SizedBox(width: 16),
+                const Icon(Icons.comment),
+                const SizedBox(width: 4),
+                Text('$comments'),
+                const SizedBox(width: 16),
+                const Icon(Icons.send),
+                const SizedBox(width: 4),
+                Text('$shares'),
               ],
             ),
           ),
           if (description.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4),
               child: Text(description),
             ),
         ],

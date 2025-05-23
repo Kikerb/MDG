@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:motor_deal_granada/main.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -15,6 +16,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _phoneController = TextEditingController();
+  
 
   // Colores basados en la imagen proporcionada
   final Color _backgroundColor = Colors.black;
@@ -30,60 +32,61 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   // Función para registrar al usuario
   Future<void> _signUp() async {
-    if (_formKey.currentState!.validate()) {
-      try {
-        // Muestra un mensaje de carga
+  if (_formKey.currentState!.validate()) {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Registrando usuario...')),
+      );
+
+      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      if (userCredential.user != null) {
+        await userCredential.user!.updateDisplayName(_nameController.text.trim());
+        await userCredential.user!.sendEmailVerification();
+
+        // Guardar datos adicionales en Firestore
+        final userId = userCredential.user!.uid;
+        await FirebaseFirestore.instance.collection('users').doc(userId).set({
+          'name': _nameController.text.trim(),
+          'email': _emailController.text.trim(),
+          'phone': _phoneController.text.trim(),
+          'followers': [],
+          'following': [],
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registrando usuario...')),
+          const SnackBar(content: Text('Usuario registrado con éxito. Por favor, verifica tu correo electrónico.')),
         );
 
-        // Crea el usuario en Firebase Auth
-        UserCredential userCredential =
-            await _auth.createUserWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-        );
-
-        // Si el registro es exitoso, puedes hacer algo, como guardar datos adicionales del usuario
-        if (userCredential.user != null) {
-          // Actualiza el nombre del usuario
-          await userCredential.user!.updateDisplayName(_nameController.text.trim());
-
-          // Envía un correo de verificación
-          await userCredential.user!.sendEmailVerification();
-
-          // Muestra un mensaje de éxito y muestra el diálogo
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text(
-                    'Usuario registrado con éxito. Por favor, verifica tu correo electrónico.')),
-          );
-          _showConfirmationDialog(); // Llama al diálogo aquí
-        }
-      } catch (e) {
-        // Captura cualquier error y muestra un mensaje
-        String errorMessage = 'Ocurrió un error: ${e.toString()}';
-        if (e is FirebaseAuthException) {
-          switch (e.code) {
-            case 'weak-password':
-              errorMessage = 'La contraseña es demasiado débil.';
-              break;
-            case 'email-already-in-use':
-              errorMessage = 'Ya existe una cuenta con este correo electrónico.';
-              break;
-            case 'invalid-email':
-              errorMessage = 'El correo electrónico no es válido.';
-              break;
-            default:
-              errorMessage = 'Error al registrar usuario: ${e.message}';
-          }
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
+        _showConfirmationDialog();
       }
+    } catch (e) {
+      String errorMessage = 'Ocurrió un error: ${e.toString()}';
+      if (e is FirebaseAuthException) {
+        switch (e.code) {
+          case 'weak-password':
+            errorMessage = 'La contraseña es demasiado débil.';
+            break;
+          case 'email-already-in-use':
+            errorMessage = 'Ya existe una cuenta con este correo electrónico.';
+            break;
+          case 'invalid-email':
+            errorMessage = 'El correo electrónico no es válido.';
+            break;
+          default:
+            errorMessage = 'Error al registrar usuario: ${e.message}';
+        }
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
     }
   }
+}
 
   // Función para mostrar el diálogo de confirmación
   void _showConfirmationDialog() {

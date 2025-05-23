@@ -8,7 +8,6 @@ import 'package:image_picker/image_picker.dart';
 import 'Posts.dart';
 import 'ConfiguracionUser.dart';
 
-
 class GarageScreen extends StatefulWidget {
   const GarageScreen({super.key});
 
@@ -306,42 +305,63 @@ class _GarageScreenState extends State<GarageScreen> {
                       style: const TextStyle(color: Colors.white70),
                     ),
                     const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF673AB7),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                    FutureBuilder<DocumentSnapshot>(
+                      future:
+                          FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(userId)
+                              .get(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              color: Colors.purpleAccent,
                             ),
-                          ),
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Ver Seguidores')),
-                            );
-                          },
-                          child: const Text('SEGUIDORES'),
-                        ),
-                        const SizedBox(width: 10),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF673AB7),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                          );
+                        }
+                        if (!snapshot.hasData || !snapshot.data!.exists) {
+                          return const Text(
+                            'Seguidos: 0  Seguidores: 0',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 16,
                             ),
-                          ),
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Ver Seguidos')),
-                            );
-                          },
-                          child: const Text('SEGUIDOS'),
-                        ),
-                      ],
+                          );
+                        }
+
+                        final data =
+                            snapshot.data!.data() as Map<String, dynamic>? ??
+                            {};
+
+                        final seguidores =
+                            (data['followers'] as List<dynamic>?)?.length ?? 0;
+                        final seguidos =
+                            (data['following'] as List<dynamic>?)?.length ?? 0;
+
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Seguidos: $seguidos',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(width: 20),
+                            Text(
+                              'Seguidores: $seguidores',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
+
                     const SizedBox(height: 12),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20.0),

@@ -83,13 +83,21 @@ class ScrollScreen extends StatelessWidget {
               final post = posts[index];
               final data = post.data() as Map<String, dynamic>;
 
+            // Usa containsKey para verificar que exista la clave antes de usarla
+            final username = data.containsKey('username') ? data['username'] : 'Usuario Desconocido';
+            final imageUrl = data.containsKey('imageUrl') ? data['imageUrl'] : 'https://via.placeholder.com/150';
+            final likes = data.containsKey('likes') ? data['likes'] : 0;
+            final comments = data.containsKey('comments') ? data['comments'] : 0;
+            final shares = data.containsKey('shares') ? data['shares'] : 0;
+            final description = data.containsKey('description') ? data['description'] : '';
+
               return PostCard(
-                username: data['username'] ?? 'Usuario Desconocido', // Valor por defecto
-                imageUrl: data['imageUrl'] ?? 'https://via.placeholder.com/150', // URL de imagen por defecto
-                likes: data['likes'] ?? 0,
-                comments: data['comments'] ?? 0,
-                shares: data['shares'] ?? 0,
-                description: data['description'] ?? '',
+                  username: username,
+                  imageUrl: imageUrl,
+                  likes: likes,
+                  comments: comments,
+                  shares: shares,
+                  description: description,
               );
             },
           );
@@ -109,8 +117,8 @@ class ScrollScreen extends StatelessWidget {
               message = 'Inicio'; // Ya estamos aquí
               break;
             case 1:
-              message = 'Mis Posts';
-              // Aquí podrías navegar a una pantalla de "Mis Posts" o cambiar el StreamBuilder
+              message = 'Buscar';
+              Navigator.of(context).pushReplacementNamed(buscarScreenRoute);
               break;
             case 2:
               message = 'Garage';
@@ -127,8 +135,8 @@ class ScrollScreen extends StatelessWidget {
             label: 'Inicio', // Texto en español
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.folder_open), // O un icono que represente "mis posts"
-            label: 'Mis Posts', // Texto en español
+            icon: Icon(Icons.search), // Icono de lupa
+            label: 'Buscar', // Texto en español
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.warehouse), // O un icono que represente un garaje
