@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'Posts.dart';
 import 'ConfiguracionUser.dart';
+import '../../main.dart';
 
 class GarageScreen extends StatefulWidget {
   const GarageScreen({super.key});
@@ -452,16 +453,17 @@ class _GarageScreenState extends State<GarageScreen> {
                 selectedItemColor: Colors.purpleAccent,
                 unselectedItemColor: Colors.white,
                 onTap: (index) {
+                  if (index == _currentIndex) return; // Evita reload innecesario
                   setState(() {
                     _currentIndex = index;
-                    if (index == 0) {
-                      Navigator.of(context).pushReplacementNamed('/home');
-                    } else if (index == 1) {
-                      Navigator.of(context).pushReplacementNamed('/search');
-                    } else if (index == 2) {
-                      // Ya está en Garage
-                    }
                   });
+                  if (index == 0) {
+                    Navigator.of(context).pushReplacementNamed(scrollScreenRoute);
+                  } else if (index == 1) {
+                    Navigator.of(context).pushReplacementNamed(buscarScreenRoute);
+                  } else if (index == 2) {
+                    Navigator.of(context).pushReplacementNamed(garageScreenRoute);
+                  }
                 },
                 items: const [
                   BottomNavigationBarItem(

@@ -48,7 +48,7 @@ class ScrollScreen extends StatelessWidget {
 
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
-            .collection('posts')
+            .collection('Posts')
             .orderBy('timestamp', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
