@@ -1,10 +1,11 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:motor_deal_granada/main.dart'; // <--- Importa main.dart para las rutas
-
-import 'Posts.dart'; // Asumo que este archivo contiene tu widget PostCard
-import 'menuOpcionesPerfil.dart';
+import 'package:image_picker/image_picker.dart';
+import 'Posts.dart';
 
 class GarageScreen extends StatefulWidget {
   const GarageScreen({super.key});
@@ -15,11 +16,15 @@ class GarageScreen extends StatefulWidget {
 
 class _GarageScreenState extends State<GarageScreen> {
   String selectedFilter = 'Todos';
-  int _currentIndex = 2; // índice para el BottomNavigationBar
+  int _currentIndex = 2;
 
   Future<String?> _getProfileImageUrl(String userId) async {
     try {
-      final doc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .get();
       if (doc.exists) {
         return doc.data()?['profileImageUrl'] as String?;
       }
@@ -27,6 +32,114 @@ class _GarageScreenState extends State<GarageScreen> {
       print('Error obteniendo foto de perfil: $e');
     }
     return null;
+  }
+
+  Future<void> _mostrarSeleccionImagen(BuildContext context) async {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Usar cámara'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(context, ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Seleccionar de galería'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(context, ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickImage(BuildContext context, ImageSource source) async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: source, imageQuality: 85);
+
+    if (picked != null) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final file = File(picked.path);
+        final ref = FirebaseStorage.instance
+            .ref()
+            .child('profile_images')
+            .child('${user.uid}.jpg');
+
+        try {
+          await ref.putFile(file);
+          final url = await ref.getDownloadURL();
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .update({'profileImageUrl': url});
+          setState(() {}); // Para refrescar la imagen en pantalla
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error al subir la imagen: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  void _showProfileMenu(BuildContext context, Offset tapPosition) async {
+    final RenderBox overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final selected = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromRect(
+        Rect.fromLTWH(tapPosition.dx, tapPosition.dy, 0, 0),
+        Offset.zero & overlay.size,
+      ),
+      items: [
+        PopupMenuItem(
+          value: 'cambiar_foto',
+          child: Row(
+            children: const [
+              Icon(Icons.camera_alt, color: Colors.black),
+              SizedBox(width: 8),
+              Text('Cambiar Foto'),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'logout',
+          child: Row(
+            children: const [
+              Icon(Icons.logout, color: Colors.black),
+              SizedBox(width: 8),
+              Text('Cerrar sesión'),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    if (selected == 'perfil') {
+      // Acción para ir a perfil
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Ir a Perfil')));
+    } else if (selected == 'cambiar_foto') {
+      _mostrarSeleccionImagen(context);
+    } else if (selected == 'logout') {
+      await FirebaseAuth.instance.signOut();
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
+    }
   }
 
   @override
@@ -37,12 +150,13 @@ class _GarageScreenState extends State<GarageScreen> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             backgroundColor: Colors.black,
-            body: Center(child: CircularProgressIndicator(color: Colors.purpleAccent)),
+            body: Center(
+              child: CircularProgressIndicator(color: Colors.purpleAccent),
+            ),
           );
         }
 
         if (snapshot.hasError) {
-          print('Error al cargar usuario en GarageScreen: ${snapshot.error}');
           return const Scaffold(
             backgroundColor: Colors.black,
             body: Center(
@@ -56,7 +170,9 @@ class _GarageScreenState extends State<GarageScreen> {
 
         if (!snapshot.hasData || snapshot.data == null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.of(context).pushReplacementNamed(loginScreenRoute);
+            Navigator.of(
+              context,
+            ).pushReplacementNamed('/login'); // Cambia por tu ruta de login
           });
           return const Scaffold(
             backgroundColor: Colors.black,
@@ -76,10 +192,13 @@ class _GarageScreenState extends State<GarageScreen> {
         return FutureBuilder<String?>(
           future: _getProfileImageUrl(userId),
           builder: (context, snapshotUrl) {
-            String imageUrl = 'https://i.imgur.com/BoN9kdC.png'; // imagen por defecto
-            if (snapshotUrl.connectionState == ConnectionState.done && snapshotUrl.data != null && snapshotUrl.data!.isNotEmpty) {
+            String imageUrl = 'https://i.imgur.com/BoN9kdC.png';
+            if (snapshotUrl.connectionState == ConnectionState.done &&
+                snapshotUrl.data?.isNotEmpty == true) {
               imageUrl = snapshotUrl.data!;
             }
+
+            Offset? tapPosition;
 
             return Scaffold(
               backgroundColor: Colors.black,
@@ -95,7 +214,56 @@ class _GarageScreenState extends State<GarageScreen> {
                   ),
                 ),
                 centerTitle: true,
-                leading: const MenuOpcionesPerfil(),
+                leading: Builder(
+                  builder:
+                      (context) => IconButton(
+                        icon: const Icon(Icons.menu, color: Colors.white),
+                        onPressed: () => Scaffold.of(context).openDrawer(),
+                      ),
+                ),
+              ),
+              drawer: Drawer(
+                backgroundColor: Colors.black,
+                child: ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
+                    DrawerHeader(
+                      decoration: const BoxDecoration(
+                        color: Colors.purpleAccent,
+                      ),
+                      child: Text(
+                        userEmail,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.person, color: Colors.white),
+                      title: const Text(
+                        'Perfil',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Ir a Perfil')),
+                        );
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.logout, color: Colors.white),
+                      title: const Text(
+                        'Cerrar sesión',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      onTap: () {
+                        FirebaseAuth.instance.signOut();
+                        Navigator.of(context).pushReplacementNamed(
+                          '/login',
+                        ); // Cambia por tu ruta de login
+                      },
+                    ),
+                  ],
+                ),
               ),
               body: SingleChildScrollView(
                 child: Column(
@@ -110,12 +278,27 @@ class _GarageScreenState extends State<GarageScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    CircleAvatar(
-                      radius: 40,
-                      backgroundImage: NetworkImage(imageUrl),
+
+                    GestureDetector(
+                      onTapDown: (details) {
+                        tapPosition = details.globalPosition;
+                      },
+                      onTap: () {
+                        if (tapPosition != null) {
+                          _showProfileMenu(context, tapPosition!);
+                        }
+                      },
+                      child: CircleAvatar(
+                        radius: 40,
+                        backgroundImage: NetworkImage(imageUrl),
+                      ),
                     ),
+
                     const SizedBox(height: 8),
-                    Text(userEmail, style: const TextStyle(color: Colors.white70)),
+                    Text(
+                      userEmail,
+                      style: const TextStyle(color: Colors.white70),
+                    ),
                     const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -167,9 +350,18 @@ class _GarageScreenState extends State<GarageScreen> {
                         ),
                         iconEnabledColor: Colors.white,
                         items: const [
-                          DropdownMenuItem(value: 'Todos', child: Text('Todos', style: TextStyle(color: Colors.white))),
-                          DropdownMenuItem(value: 'Coche', child: Text('Coches', style: TextStyle(color: Colors.white))),
-                          DropdownMenuItem(value: 'Piezas', child: Text('Piezas', style: TextStyle(color: Colors.white))),
+                          DropdownMenuItem(
+                            value: 'Todos',
+                            child: Text('Todos'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'En venta',
+                            child: Text('En venta'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Vendido',
+                            child: Text('Vendido'),
+                          ),
                         ],
                         onChanged: (value) {
                           if (value != null) {
@@ -180,54 +372,48 @@ class _GarageScreenState extends State<GarageScreen> {
                         },
                       ),
                     ),
-                    const Divider(color: Colors.white24, thickness: 1, height: 30),
+                    const SizedBox(height: 12),
                     StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('posts')
-                          .where('userId', isEqualTo: userId)
-                          // Para filtrar por tipo si no es 'Todos'
-                          .where(
-                            'tipo',
-                            isEqualTo: selectedFilter == 'Todos' ? null : selectedFilter,
-                          )
-                          .orderBy('timestamp', descending: true)
-                          .snapshots(),
-                      builder: (context, snapshotPosts) {
-                        if (snapshotPosts.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator(color: Colors.purpleAccent));
-                        }
-                        if (snapshotPosts.hasError) {
-                          print('Error al cargar posts del usuario: ${snapshotPosts.error}');
+                      stream:
+                          FirebaseFirestore.instance
+                              .collection('Posts')
+                              .where('uid', isEqualTo: userId)
+                              .snapshots(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
                           return const Center(
-                            child: Text(
-                              'Error al cargar tus publicaciones.',
-                              style: TextStyle(color: Colors.white),
+                            child: CircularProgressIndicator(
+                              color: Colors.purpleAccent,
                             ),
                           );
                         }
-                        if (!snapshotPosts.hasData || snapshotPosts.data!.docs.isEmpty) {
-                          return const Center(
-                            child: Text(
-                              'Aún no tienes publicaciones en tu garaje.',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          );
-                        }
+                        final docs =
+                            snapshot.data!.docs.where((doc) {
+                              if (selectedFilter == 'Todos') {
+                                return true;
+                              } else if (selectedFilter == 'En venta') {
+                                return doc['vendido'] == false;
+                              } else if (selectedFilter == 'Vendido') {
+                                return doc['vendido'] == true;
+                              }
+                              return true;
+                            }).toList();
 
-                        final posts = snapshotPosts.data!.docs;
-
-                        return Column(
-                          children: posts.map((doc) {
-                            final data = doc.data() as Map<String, dynamic>;
+                        return ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: docs.length,
+                          itemBuilder: (context, index) {
+                            final doc = docs[index];
                             return PostCard(
-                              username: data['username'] ?? 'Usuario Desconocido',
-                              imageUrl: data['imageUrl'] ?? 'https://via.placeholder.com/150',
-                              likes: data['likes'] ?? 0,
-                              comments: data['comments'] ?? 0,
-                              shares: data['shares'] ?? 0,
-                              description: data['description'] ?? '',
+                              username: doc['username'] ?? 'Usuario',
+                              imageUrl: doc['imageUrl'] ?? '',
+                              likes: doc['likes'] ?? 0,
+                              comments: doc['comments'] ?? 0,
+                              shares: doc['shares'] ?? 0,
+                              description: doc['description'] ?? '',
                             );
-                          }).toList(),
+                          },
                         );
                       },
                     ),
@@ -235,34 +421,35 @@ class _GarageScreenState extends State<GarageScreen> {
                 ),
               ),
               bottomNavigationBar: BottomNavigationBar(
-                backgroundColor: const Color(0xFF1A0033),
+                backgroundColor: Colors.black,
+                currentIndex: _currentIndex,
                 selectedItemColor: Colors.purpleAccent,
                 unselectedItemColor: Colors.white,
-                currentIndex: _currentIndex,
                 onTap: (index) {
                   setState(() {
                     _currentIndex = index;
+                    if (index == 0) {
+                      Navigator.of(context).pushReplacementNamed('/home');
+                    } else if (index == 1) {
+                      Navigator.of(context).pushReplacementNamed('/search');
+                    } else if (index == 2) {
+                      // Ya está en Garage
+                    }
                   });
-                  switch (index) {
-                    case 0:
-                      Navigator.of(context).pushReplacementNamed(scrollScreenRoute);
-                      break;
-                    case 1:
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Abriendo Mis Posts (ruta no implementada)')),
-                      );
-                      break;
-                    case 2:
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Ya estás en Garaje')),
-                      );
-                      break;
-                  }
                 },
                 items: const [
-                  BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Inicio'),
-                  BottomNavigationBarItem(icon: Icon(Icons.folder_open), label: 'Mis Posts'),
-                  BottomNavigationBarItem(icon: Icon(Icons.warehouse), label: 'Garaje'),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.home),
+                    label: 'Home',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.search),
+                    label: 'Buscar',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.garage),
+                    label: 'Garage',
+                  ),
                 ],
               ),
             );
