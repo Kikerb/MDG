@@ -6,6 +6,8 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'Posts.dart';
+import 'ConfiguracionUser.dart';
+
 
 class GarageScreen extends StatefulWidget {
   const GarageScreen({super.key});
@@ -214,12 +216,16 @@ class _GarageScreenState extends State<GarageScreen> {
                   ),
                 ),
                 centerTitle: true,
-                leading: Builder(
-                  builder:
-                      (context) => IconButton(
-                        icon: const Icon(Icons.menu, color: Colors.white),
-                        onPressed: () => Scaffold.of(context).openDrawer(),
+                leading: IconButton(
+                  icon: const Icon(Icons.settings, color: Colors.white),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ConfiguracionUser(),
                       ),
+                    );
+                  },
                 ),
               ),
               drawer: Drawer(
