@@ -21,7 +21,7 @@ class PostCard extends StatelessWidget {
     required this.comments,
     required this.shares,
     required this.description,
-    required this.isLiked,  // <-- nuevo
+    required this.isLiked,
     required this.onLike,
     required this.onComment,
   });

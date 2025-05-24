@@ -9,6 +9,12 @@ import 'package:image_picker/image_picker.dart';
 import 'ConfiguracionUser.dart';
 import 'Posts.dart';
 import 'subir_coche.dart';
+import '../../main.dart';
+
+// Rutas necesarias
+const String scrollScreenRoute = '/scroll';
+const String buscarScreenRoute = '/buscar';
+const String garageScreenRoute = '/garage';
 
 class GarageScreen extends StatefulWidget {
   const GarageScreen({super.key});
@@ -20,12 +26,15 @@ class GarageScreen extends StatefulWidget {
 class _GarageScreenState extends State<GarageScreen> {
   String selectedFilter = 'Todos';
   int _currentIndex = 2;
-  Offset? tapPosition; // Mueve la variable aquí para mantener el estado
+  Offset? tapPosition;
 
   Future<String?> _getProfileImageUrl(String userId) async {
     try {
       final doc =
-          await FirebaseFirestore.instance.collection('users').doc(userId).get();
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .get();
       if (doc.exists) {
         return doc.data()?['profileImageUrl'] as String?;
       }
@@ -85,7 +94,7 @@ class _GarageScreenState extends State<GarageScreen> {
               .collection('users')
               .doc(user.uid)
               .update({'profileImageUrl': url});
-          setState(() {}); // Para refrescar la imagen en pantalla
+          setState(() {});
         } catch (e) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error al subir la imagen: $e')),
@@ -105,20 +114,20 @@ class _GarageScreenState extends State<GarageScreen> {
         Offset.zero & overlay.size,
       ),
       items: [
-        PopupMenuItem(
+        const PopupMenuItem(
           value: 'cambiar_foto',
           child: Row(
-            children: const [
+            children: [
               Icon(Icons.camera_alt, color: Colors.black),
               SizedBox(width: 8),
               Text('Cambiar Foto'),
             ],
           ),
         ),
-        PopupMenuItem(
+        const PopupMenuItem(
           value: 'logout',
           child: Row(
-            children: const [
+            children: [
               Icon(Icons.logout, color: Colors.black),
               SizedBox(width: 8),
               Text('Cerrar sesión'),
@@ -168,19 +177,7 @@ class _GarageScreenState extends State<GarageScreen> {
           );
         }
 
-        if (snapshot.hasError) {
-          return const Scaffold(
-            backgroundColor: Colors.black,
-            body: Center(
-              child: Text(
-                'Error al cargar la información del usuario.',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          );
-        }
-
-        if (!snapshot.hasData || snapshot.data == null) {
+        if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             Navigator.of(context).pushReplacementNamed('/login');
           });
@@ -269,9 +266,6 @@ class _GarageScreenState extends State<GarageScreen> {
                       ),
                       onTap: () {
                         Navigator.of(context).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Ir a Perfil')),
-                        );
                       },
                     ),
                     ListTile(
@@ -282,9 +276,7 @@ class _GarageScreenState extends State<GarageScreen> {
                       ),
                       onTap: () {
                         FirebaseAuth.instance.signOut();
-                        Navigator.of(context).pushReplacementNamed(
-                          '/login',
-                        );
+                        Navigator.of(context).pushReplacementNamed('/login');
                       },
                     ),
                   ],
@@ -325,15 +317,11 @@ class _GarageScreenState extends State<GarageScreen> {
                     const SizedBox(height: 12),
                     FutureBuilder<DocumentSnapshot>(
                       future:
-                          FirebaseFirestore.instance.collection('users').doc(userId).get(),
+                          FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(userId)
+                              .get(),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(
-                            child: CircularProgressIndicator(
-                              color: Colors.purpleAccent,
-                            ),
-                          );
-                        }
                         if (!snapshot.hasData || !snapshot.data!.exists) {
                           return const Text(
                             'Seguidos: 0  Seguidores: 0',
@@ -343,7 +331,6 @@ class _GarageScreenState extends State<GarageScreen> {
                         final userDoc = snapshot.data!;
                         final seguidores = userDoc['followers'] ?? 0;
                         final seguidos = userDoc['following'] ?? 0;
-
                         return Text(
                           'Seguidos: $seguidos  Seguidores: $seguidores',
                           style: const TextStyle(color: Colors.white),
@@ -363,10 +350,11 @@ class _GarageScreenState extends State<GarageScreen> {
                     ),
                     const SizedBox(height: 16),
                     StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('Posts')
-                          .where('uid', isEqualTo: userId)
-                          .snapshots(),
+                      stream:
+                          FirebaseFirestore.instance
+                              .collection('Posts')
+                              .where('uid', isEqualTo: userId)
+                              .snapshots(),
                       builder: (context, snapshot) {
                         if (!snapshot.hasData) {
                           return const Center(
@@ -375,23 +363,20 @@ class _GarageScreenState extends State<GarageScreen> {
                             ),
                           );
                         }
-                        final docs = snapshot.data!.docs.where((doc) {
-                          if (selectedFilter == 'Todos') {
-                            return true;
-                          } else if (selectedFilter == 'En venta') {
-                            return doc['vendido'] == false;
-                          } else if (selectedFilter == 'Vendido') {
-                            return doc['vendido'] == true;
-                          }
-                          return true;
-                        }).toList();
+                        final docs =
+                            snapshot.data!.docs.where((doc) {
+                              if (selectedFilter == 'Todos') return true;
+                              if (selectedFilter == 'En venta')
+                                return doc['vendido'] == false;
+                              if (selectedFilter == 'Vendido')
+                                return doc['vendido'] == true;
+                              return true;
+                            }).toList();
 
                         if (docs.isEmpty) {
-                          return const Center(
-                            child: Text(
-                              'No hay posts que mostrar.',
-                              style: TextStyle(color: Colors.white),
-                            ),
+                          return const Text(
+                            'No hay posts que mostrar.',
+                            style: TextStyle(color: Colors.white),
                           );
                         }
 
@@ -403,15 +388,20 @@ class _GarageScreenState extends State<GarageScreen> {
                             final doc = docs[index];
                             final data = doc.data()! as Map<String, dynamic>;
 
-                            return PostCard(
+                            PostCard(
                               postId: doc.id,
                               username: data['username'] ?? 'Sin nombre',
                               imageUrl: data['imageUrl'] ?? '',
                               description: data['description'] ?? '',
-                              vendido: data['vendido'] ?? false,
                               likes: data['likes'] ?? 0,
-                              onLikePressed: () => _handleLike(doc.id, data),
-                              onCommentPressed: () => _handleComment(doc.id),
+                              comments:
+                                  data['comments'] ??
+                                  0, // si no tienes comentarios, pon 0
+                              shares: data['shares'] ?? 0, // igual con shares
+                              isLiked:
+                                  false, // o maneja si el usuario ya le dio like o no
+                              onLike: () => _handleLike(doc.id, data),
+                              onComment: () => _handleComment(doc.id),
                             );
                           },
                         );
@@ -419,6 +409,47 @@ class _GarageScreenState extends State<GarageScreen> {
                     ),
                   ],
                 ),
+              ),
+              bottomNavigationBar: BottomNavigationBar(
+                backgroundColor: const Color(0xFF1A0033),
+                selectedItemColor: Colors.purpleAccent,
+                unselectedItemColor: Colors.white,
+                currentIndex: _currentIndex,
+                onTap: (index) {
+                  if (index == _currentIndex) return;
+
+                  switch (index) {
+                    case 0:
+                      Navigator.of(
+                        context,
+                      ).pushReplacementNamed(scrollScreenRoute);
+                      break;
+                    case 1:
+                      Navigator.of(
+                        context,
+                      ).pushReplacementNamed(buscarScreenRoute);
+                      break;
+                    case 2:
+                      Navigator.of(
+                        context,
+                      ).pushReplacementNamed(garageScreenRoute);
+                      break;
+                  }
+                },
+                items: const [
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.home),
+                    label: 'Inicio',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.search),
+                    label: 'Buscar',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.warehouse),
+                    label: 'Garage',
+                  ),
+                ],
               ),
             );
           },
@@ -439,87 +470,6 @@ class _GarageScreenState extends State<GarageScreen> {
         });
       },
       child: Text(text),
-    );
-  }
-}
-
-class PostCard extends StatelessWidget {
-  final String postId;
-  final String username;
-  final String imageUrl;
-  final String description;
-  final bool vendido;
-  final int likes;
-  final VoidCallback onLikePressed;
-  final VoidCallback onCommentPressed;
-
-  const PostCard({
-    Key? key,
-    required this.postId,
-    required this.username,
-    required this.imageUrl,
-    required this.description,
-    required this.vendido,
-    required this.likes,
-    required this.onLikePressed,
-    required this.onCommentPressed,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      color: Colors.grey[850],
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              username,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            imageUrl.isNotEmpty
-                ? Image.network(imageUrl)
-                : Container(
-                    height: 200,
-                    color: Colors.grey,
-                    child: const Center(
-                      child: Icon(Icons.image_not_supported, size: 50),
-                    ),
-                  ),
-            const SizedBox(height: 8),
-            Text(
-              description,
-              style: const TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              vendido ? 'Estado: Vendido' : 'Estado: En venta',
-              style: TextStyle(color: vendido ? Colors.redAccent : Colors.greenAccent),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.favorite, color: Colors.purpleAccent),
-                  onPressed: onLikePressed,
-                ),
-                Text(
-                  likes.toString(),
-                  style: const TextStyle(color: Colors.white),
-                ),
-                const SizedBox(width: 16),
-                IconButton(
-                  icon: const Icon(Icons.comment, color: Colors.purpleAccent),
-                  onPressed: onCommentPressed,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
