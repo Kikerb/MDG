@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'Posts.dart';
 import 'ConfiguracionUser.dart';
 import '../../main.dart';
+import 'subir_coche.dart';
 
 class GarageScreen extends StatefulWidget {
   const GarageScreen({super.key});
@@ -227,6 +228,19 @@ class _GarageScreenState extends State<GarageScreen> {
                     );
                   },
                 ),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.directions_car, color: Colors.white),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SubirCocheScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
               drawer: Drawer(
                 backgroundColor: Colors.black,
@@ -453,16 +467,23 @@ class _GarageScreenState extends State<GarageScreen> {
                 selectedItemColor: Colors.purpleAccent,
                 unselectedItemColor: Colors.white,
                 onTap: (index) {
-                  if (index == _currentIndex) return; // Evita reload innecesario
+                  if (index == _currentIndex)
+                    return; // Evita reload innecesario
                   setState(() {
                     _currentIndex = index;
                   });
                   if (index == 0) {
-                    Navigator.of(context).pushReplacementNamed(scrollScreenRoute);
+                    Navigator.of(
+                      context,
+                    ).pushReplacementNamed(scrollScreenRoute);
                   } else if (index == 1) {
-                    Navigator.of(context).pushReplacementNamed(buscarScreenRoute);
+                    Navigator.of(
+                      context,
+                    ).pushReplacementNamed(buscarScreenRoute);
                   } else if (index == 2) {
-                    Navigator.of(context).pushReplacementNamed(garageScreenRoute);
+                    Navigator.of(
+                      context,
+                    ).pushReplacementNamed(garageScreenRoute);
                   }
                 },
                 items: const [
