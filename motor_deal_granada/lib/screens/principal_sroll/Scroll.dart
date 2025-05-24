@@ -1,34 +1,117 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../../main.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'Posts.dart'; // Aquí tu PostCard
+import '../../main.dart'; // Para las rutas (noticiasScreenRoute, etc)
 
-import 'Posts.dart'; // Asumo que este archivo contiene tu widget PostCard
-
-class ScrollScreen extends StatelessWidget {
+class ScrollScreen extends StatefulWidget {
   const ScrollScreen({super.key});
+
+  @override
+  State<ScrollScreen> createState() => _ScrollScreenState();
+}
+
+class _ScrollScreenState extends State<ScrollScreen> {
+  bool _defaultPostInserted = false;
+  String? currentUserId;
+
+  @override
+  void initState() {
+    super.initState();
+    _insertDefaultPost();
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      setState(() {
+        currentUserId = user.uid;
+      });
+    }
+  }
+
+  Future<void> _insertDefaultPost() async {
+    if (_defaultPostInserted) return;
+
+    final postsSnapshot =
+        await FirebaseFirestore.instance.collection('Posts').limit(1).get();
+
+    if (postsSnapshot.docs.isEmpty) {
+      await FirebaseFirestore.instance.collection('Posts').add({
+        'username': 'Admin',
+        'imageUrl': 'https://i.ytimg.com/vi/lZmrRlYNCbM/maxresdefault.jpg',
+        'likes': 0,
+        'comments': 0,
+        'shares': 0,
+        'description': 'Este es el post por defecto de MotorDeal Granada.',
+        'timestamp': FieldValue.serverTimestamp(),
+        'likedUsers':
+            [], // Inicializamos el array de usuarios que han dado like
+      });
+    }
+
+    _defaultPostInserted = true;
+  }
+
+  Future<void> _handleLike(String postId, Map<String, dynamic> data) async {
+    final userId = FirebaseAuth.instance.currentUser!.uid;
+    final docRef = FirebaseFirestore.instance.collection('Posts').doc(postId);
+
+    try {
+      final docSnap = await docRef.get();
+      if (!docSnap.exists) {
+        print('Documento $postId no existe');
+        return;
+      }
+
+      final data = docSnap.data();
+      final likedUsers =
+          data != null && data.containsKey('likedUsers')
+              ? List<String>.from(data['likedUsers'])
+              : <String>[];
+      int likes = docSnap['likes'] ?? 0;
+
+      if (likedUsers.contains(userId)) {
+        // Si ya le dio like, quitar like
+        likedUsers.remove(userId);
+        likes = (likes > 0) ? likes - 1 : 0;
+      } else {
+        // Si no, agregar like
+        likedUsers.add(userId);
+        likes += 1;
+      }
+
+      await docRef.update({'likedUsers': likedUsers, 'likes': likes});
+
+      setState(() {}); // refrescar UI
+    } catch (e) {
+      print('Error actualizando likes: $e');
+    }
+  }
+
+  void _handleComment(String postId) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Ir a comentarios del post $postId')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black, // Fondo negro para toda la pantalla
-
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: Colors.black, // Fondo negro para la AppBar
-        elevation: 0, // Sin sombra
+        backgroundColor: Colors.black,
+        elevation: 0,
         title: const Text(
-          'MotorDeal Granada', // Título central como en la imagen o el logo
+          'MotorDeal Granada',
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
         ),
-        centerTitle: true, // Centra el título en la AppBar
+        centerTitle: true,
         leading: IconButton(
-          // Botón de Notificaciones (izquierda)
           icon: const Icon(Icons.notifications_none, color: Colors.white),
           onPressed: () {
-            // Lógica para ir a la pantalla de notificaciones
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Abriendo Notificaciones')),
             );
@@ -36,7 +119,6 @@ class ScrollScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            // Botón de Mensajes (derecha)
             icon: const Icon(Icons.article, color: Colors.white),
             onPressed: () {
               Navigator.of(context).pushNamed(noticiasScreenRoute);
@@ -47,7 +129,6 @@ class ScrollScreen extends StatelessWidget {
           ),
         ],
       ),
-
       body: StreamBuilder<QuerySnapshot>(
         stream:
             FirebaseFirestore.instance
@@ -56,7 +137,6 @@ class ScrollScreen extends StatelessWidget {
                 .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            print('Error al cargar posts: ${snapshot.error}');
             return const Center(
               child: Text(
                 'Error al cargar los posts. Inténtalo de nuevo.',
@@ -68,7 +148,7 @@ class ScrollScreen extends StatelessWidget {
           if (!snapshot.hasData) {
             return const Center(
               child: CircularProgressIndicator(color: Colors.purpleAccent),
-            ); // Color del indicador
+            );
           }
 
           final posts = snapshot.data!.docs;
@@ -86,51 +166,40 @@ class ScrollScreen extends StatelessWidget {
             itemCount: posts.length,
             itemBuilder: (context, index) {
               final post = posts[index];
-              final data = post.data() as Map<String, dynamic>;
+              final data = post.data()! as Map<String, dynamic>;
 
-              // Usa containsKey para verificar que exista la clave antes de usarla
-              final username =
-                  data.containsKey('username')
-                      ? data['username']
-                      : 'Usuario Desconocido';
-              final imageUrl =
-                  data.containsKey('imageUrl')
-                      ? data['imageUrl']
-                      : 'https://via.placeholder.com/150';
-              final likes = data.containsKey('likes') ? data['likes'] : 0;
-              final comments =
-                  data.containsKey('comments') ? data['comments'] : 0;
-              final shares = data.containsKey('shares') ? data['shares'] : 0;
-              final description =
-                  data.containsKey('description') ? data['description'] : '';
+              final List<dynamic> likedUsers = List<dynamic>.from(
+                data['likedUsers'] ?? [],
+              );
+              final isLiked =
+                  currentUserId != null && likedUsers.contains(currentUserId);
 
               return PostCard(
-                username: username,
-                imageUrl: imageUrl,
-                likes: likes,
-                comments: comments,
-                shares: shares,
-                description: description,
+                postId: post.id,
+                username: data['username'] ?? 'Usuario Desconocido',
+                imageUrl: data['imageUrl'] ?? 'https://via.placeholder.com/150',
+                likes: data['likes'] ?? 0,
+                comments: data['comments'] ?? 0,
+                shares: data['shares'] ?? 0,
+                description: data['description'] ?? '',
+                isLiked: isLiked,
+                onLike: () => _handleLike(post.id, data),
+                onComment: () => _handleComment(post.id),
               );
             },
           );
         },
       ),
-
       bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: const Color(
-          0xFF1A0033,
-        ), // Fondo de la barra púrpura oscuro
-        selectedItemColor: Colors.purpleAccent, // Color del icono seleccionado
-        unselectedItemColor: Colors.white, // Color del icono no seleccionado
-        currentIndex:
-            0, // Puedes manejar el estado de la navegación con un StatefulWidget
+        backgroundColor: const Color(0xFF1A0033),
+        selectedItemColor: Colors.purpleAccent,
+        unselectedItemColor: Colors.white,
+        currentIndex: 0,
         onTap: (index) {
-          // Lógica para navegar entre secciones
           String message = '';
           switch (index) {
             case 0:
-              message = 'Inicio'; // Ya estamos aquí
+              message = 'Inicio';
               break;
             case 1:
               message = 'Buscar';
@@ -146,18 +215,9 @@ class ScrollScreen extends StatelessWidget {
           ).showSnackBar(SnackBar(content: Text('Has seleccionado: $message')));
         },
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Inicio', // Texto en español
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search), // Icono de lupa
-            label: 'Buscar', // Texto en español
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.warehouse), // O un icono que represente un garaje
-            label: 'Garage', // Texto en español
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Inicio'),
+          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Buscar'),
+          BottomNavigationBarItem(icon: Icon(Icons.warehouse), label: 'Garage'),
         ],
       ),
     );
