@@ -1,9 +1,12 @@
+// ... imports
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'Posts.dart'; // Aquí tu PostCard
-import '../../main.dart'; // Para las rutas (noticiasScreenRoute, etc)
+import 'Posts.dart';
+import '../../main.dart';
 import 'CommentsScreen.dart';
+import 'NotificationsScreen.dart';
+
 class ScrollScreen extends StatefulWidget {
   const ScrollScreen({super.key});
 
@@ -25,7 +28,16 @@ class _ScrollScreenState extends State<ScrollScreen> {
       setState(() {
         currentUserId = user.uid;
       });
+      _addLoginNotification(user.uid, user.email ?? 'Usuario');
     }
+  }
+
+  Future<void> _addLoginNotification(String userId, String username) async {
+    await FirebaseFirestore.instance.collection('Notifications').add({
+      'userId': userId,
+      'message': 'Sesión iniciada por $username',
+      'timestamp': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<void> _insertDefaultPost() async {
@@ -43,8 +55,7 @@ class _ScrollScreenState extends State<ScrollScreen> {
         'shares': 0,
         'description': 'Este es el post por defecto de MotorDeal Granada.',
         'timestamp': FieldValue.serverTimestamp(),
-        'likedUsers':
-            [], // Inicializamos el array de usuarios que han dado like
+        'likedUsers': [],
       });
     }
 
@@ -63,33 +74,30 @@ class _ScrollScreenState extends State<ScrollScreen> {
       }
 
       final data = docSnap.data();
-      final likedUsers =
-          data != null && data.containsKey('likedUsers')
-              ? List<String>.from(data['likedUsers'])
-              : <String>[];
+      final likedUsers = data != null && data.containsKey('likedUsers')
+          ? List<String>.from(data['likedUsers'])
+          : <String>[];
       int likes = docSnap['likes'] ?? 0;
 
       if (likedUsers.contains(userId)) {
-        // Si ya le dio like, quitar like
         likedUsers.remove(userId);
         likes = (likes > 0) ? likes - 1 : 0;
       } else {
-        // Si no, agregar like
         likedUsers.add(userId);
         likes += 1;
       }
 
       await docRef.update({'likedUsers': likedUsers, 'likes': likes});
-
-      setState(() {}); // refrescar UI
+      setState(() {});
     } catch (e) {
       print('Error actualizando likes: $e');
     }
   }
+
   void _handleComment(String postId) {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => CommentsScreen(postId: postId),
-    ));
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => CommentsScreen(postId: postId)),
+    );
   }
 
   @override
@@ -111,8 +119,8 @@ class _ScrollScreenState extends State<ScrollScreen> {
         leading: IconButton(
           icon: const Icon(Icons.notifications_none, color: Colors.white),
           onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Abriendo Notificaciones')),
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const NotificationsScreen()),
             );
           },
         ),
@@ -128,66 +136,91 @@ class _ScrollScreenState extends State<ScrollScreen> {
           ),
         ],
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream:
-            FirebaseFirestore.instance
+      body: Stack(
+        children: [
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
                 .collection('Posts')
                 .orderBy('timestamp', descending: true)
                 .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return const Center(
-              child: Text(
-                'Error al cargar los posts. Inténtalo de nuevo.',
-                style: TextStyle(color: Colors.white),
-              ),
-            );
-          }
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return const Center(
+                  child: Text(
+                    'Error al cargar los posts. Inténtalo de nuevo.',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                );
+              }
 
-          if (!snapshot.hasData) {
-            return const Center(
-              child: CircularProgressIndicator(color: Colors.purpleAccent),
-            );
-          }
+              if (!snapshot.hasData) {
+                return const Center(
+                  child:
+                      CircularProgressIndicator(color: Colors.purpleAccent),
+                );
+              }
 
-          final posts = snapshot.data!.docs;
+              final posts = snapshot.data!.docs;
 
-          if (posts.isEmpty) {
-            return const Center(
-              child: Text(
-                'No hay publicaciones aún.',
-                style: TextStyle(color: Colors.white),
-              ),
-            );
-          }
+              if (posts.isEmpty) {
+                return const Center(
+                  child: Text(
+                    'No hay publicaciones aún.',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                );
+              }
 
-          return ListView.builder(
-            itemCount: posts.length,
-            itemBuilder: (context, index) {
-              final post = posts[index];
-              final data = post.data()! as Map<String, dynamic>;
+              return ListView.builder(
+                itemCount: posts.length,
+                itemBuilder: (context, index) {
+                  final post = posts[index];
+                  final data = post.data()! as Map<String, dynamic>;
 
-              final List<dynamic> likedUsers = List<dynamic>.from(
-                data['likedUsers'] ?? [],
-              );
-              final isLiked =
-                  currentUserId != null && likedUsers.contains(currentUserId);
+                  final List<dynamic> likedUsers =
+                      List<dynamic>.from(data['likedUsers'] ?? []);
+                  final isLiked = currentUserId != null &&
+                      likedUsers.contains(currentUserId);
 
-              return PostCard(
-                postId: post.id,
-                username: data['username'] ?? 'Usuario Desconocido',
-                imageUrl: data['imageUrl'] ?? 'https://via.placeholder.com/150',
-                likes: data['likes'] ?? 0,
-                comments: data['comments'] ?? 0,
-                shares: data['shares'] ?? 0,
-                description: data['description'] ?? '',
-                isLiked: isLiked,
-                onLike: () => _handleLike(post.id, data),
-                onComment: () => _handleComment(post.id),
+                  return PostCard(
+                    postId: post.id,
+                    username: data['username'] ?? 'Usuario Desconocido',
+                    imageUrl: data['imageUrl'] ??
+                        'https://via.placeholder.com/150',
+                    likes: data['likes'] ?? 0,
+                    comments: data['comments'] ?? 0,
+                    shares: data['shares'] ?? 0,
+                    description: data['description'] ?? '',
+                    isLiked: isLiked,
+                    onLike: () => _handleLike(post.id, data),
+                    onComment: () => _handleComment(post.id),
+                  );
+                },
               );
             },
-          );
-        },
+          ),
+          Positioned(
+            bottom: 80,
+            right: 16,
+            child: GestureDetector(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Abrir contactos (futuro comportamiento)')),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.purpleAccent,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(Icons.contacts,
+                    color: Colors.white, size: 32),
+              ),
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: const Color(0xFF1A0033),
@@ -209,9 +242,9 @@ class _ScrollScreenState extends State<ScrollScreen> {
               Navigator.of(context).pushReplacementNamed(garageScreenRoute);
               break;
           }
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Has seleccionado: $message')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Has seleccionado: $message')),
+          );
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Inicio'),
