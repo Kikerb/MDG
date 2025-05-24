@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'Posts.dart'; // Aquí tu PostCard
 import '../../main.dart'; // Para las rutas (noticiasScreenRoute, etc)
-
+import 'CommentsScreen.dart';
 class ScrollScreen extends StatefulWidget {
   const ScrollScreen({super.key});
 
@@ -86,11 +86,10 @@ class _ScrollScreenState extends State<ScrollScreen> {
       print('Error actualizando likes: $e');
     }
   }
-
   void _handleComment(String postId) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Ir a comentarios del post $postId')),
-    );
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => CommentsScreen(postId: postId),
+    ));
   }
 
   @override
