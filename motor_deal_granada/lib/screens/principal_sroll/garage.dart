@@ -403,6 +403,7 @@ class _GarageScreenState extends State<GarageScreen> {
                               onLike: () => _handleLike(doc.id, data),
                               onComment: () => _handleComment(doc.id),
                             );
+                            return null;
                           },
                         );
                       },
