@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:motor_deal_granada/screens/principal_sroll/Noticias_screen.dart';
 
 import 'firebase_options.dart';
 import 'screens/auth/auth_screen.dart';
@@ -19,6 +20,7 @@ const String signUpScreenRoute = '/signUp';
 const String scrollScreenRoute = '/scroll'; 
 const String garageScreenRoute = '/garage';
 const String buscarScreenRoute = '/buscar';
+const String noticiasScreenRoute = '/noticias';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,6 +52,7 @@ class MyApp extends StatelessWidget {
         scrollScreenRoute: (context) => const ScrollScreen(), 
         garageScreenRoute: (context) => const GarageScreen(),
         buscarScreenRoute: (context) => const BuscarScreen(),
+        noticiasScreenRoute: (context) => const NoticiasScreen(),
       },
     );
   }

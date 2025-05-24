@@ -24,7 +24,8 @@ class ScrollScreen extends StatelessWidget {
           ),
         ),
         centerTitle: true, // Centra el título en la AppBar
-        leading: IconButton( // Botón de Notificaciones (izquierda)
+        leading: IconButton(
+          // Botón de Notificaciones (izquierda)
           icon: const Icon(Icons.notifications_none, color: Colors.white),
           onPressed: () {
             // Lógica para ir a la pantalla de notificaciones
@@ -34,12 +35,13 @@ class ScrollScreen extends StatelessWidget {
           },
         ),
         actions: [
-          IconButton( // Botón de Mensajes (derecha)
-            icon: const Icon(Icons.mail_outline, color: Colors.white),
+          IconButton(
+            // Botón de Mensajes (derecha)
+            icon: const Icon(Icons.article, color: Colors.white),
             onPressed: () {
-              // Lógica para ir a la pantalla de mensajes
+              Navigator.of(context).pushNamed(noticiasScreenRoute);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Abriendo Mensajes')),
+                const SnackBar(content: Text('Abriendo Noticias')),
               );
             },
           ),
@@ -47,10 +49,11 @@ class ScrollScreen extends StatelessWidget {
       ),
 
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('Posts')
-            .orderBy('timestamp', descending: true)
-            .snapshots(),
+        stream:
+            FirebaseFirestore.instance
+                .collection('Posts')
+                .orderBy('timestamp', descending: true)
+                .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             print('Error al cargar posts: ${snapshot.error}');
@@ -63,7 +66,9 @@ class ScrollScreen extends StatelessWidget {
           }
 
           if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator(color: Colors.purpleAccent)); // Color del indicador
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.purpleAccent),
+            ); // Color del indicador
           }
 
           final posts = snapshot.data!.docs;
@@ -83,21 +88,29 @@ class ScrollScreen extends StatelessWidget {
               final post = posts[index];
               final data = post.data() as Map<String, dynamic>;
 
-            // Usa containsKey para verificar que exista la clave antes de usarla
-            final username = data.containsKey('username') ? data['username'] : 'Usuario Desconocido';
-            final imageUrl = data.containsKey('imageUrl') ? data['imageUrl'] : 'https://via.placeholder.com/150';
-            final likes = data.containsKey('likes') ? data['likes'] : 0;
-            final comments = data.containsKey('comments') ? data['comments'] : 0;
-            final shares = data.containsKey('shares') ? data['shares'] : 0;
-            final description = data.containsKey('description') ? data['description'] : '';
+              // Usa containsKey para verificar que exista la clave antes de usarla
+              final username =
+                  data.containsKey('username')
+                      ? data['username']
+                      : 'Usuario Desconocido';
+              final imageUrl =
+                  data.containsKey('imageUrl')
+                      ? data['imageUrl']
+                      : 'https://via.placeholder.com/150';
+              final likes = data.containsKey('likes') ? data['likes'] : 0;
+              final comments =
+                  data.containsKey('comments') ? data['comments'] : 0;
+              final shares = data.containsKey('shares') ? data['shares'] : 0;
+              final description =
+                  data.containsKey('description') ? data['description'] : '';
 
               return PostCard(
-                  username: username,
-                  imageUrl: imageUrl,
-                  likes: likes,
-                  comments: comments,
-                  shares: shares,
-                  description: description,
+                username: username,
+                imageUrl: imageUrl,
+                likes: likes,
+                comments: comments,
+                shares: shares,
+                description: description,
               );
             },
           );
@@ -105,10 +118,13 @@ class ScrollScreen extends StatelessWidget {
       ),
 
       bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: const Color(0xFF1A0033), // Fondo de la barra púrpura oscuro
+        backgroundColor: const Color(
+          0xFF1A0033,
+        ), // Fondo de la barra púrpura oscuro
         selectedItemColor: Colors.purpleAccent, // Color del icono seleccionado
         unselectedItemColor: Colors.white, // Color del icono no seleccionado
-        currentIndex: 0, // Puedes manejar el estado de la navegación con un StatefulWidget
+        currentIndex:
+            0, // Puedes manejar el estado de la navegación con un StatefulWidget
         onTap: (index) {
           // Lógica para navegar entre secciones
           String message = '';
@@ -125,9 +141,9 @@ class ScrollScreen extends StatelessWidget {
               Navigator.of(context).pushReplacementNamed(garageScreenRoute);
               break;
           }
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Has seleccionado: $message')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Has seleccionado: $message')));
         },
         items: const [
           BottomNavigationBarItem(
