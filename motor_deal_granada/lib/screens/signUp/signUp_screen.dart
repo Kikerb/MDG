@@ -32,61 +32,69 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   // Función para registrar al usuario
   Future<void> _signUp() async {
-  if (_formKey.currentState!.validate()) {
-    try {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Registrando usuario...')),
-      );
-
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
-
-      if (userCredential.user != null) {
-        await userCredential.user!.updateDisplayName(_nameController.text.trim());
-        await userCredential.user!.sendEmailVerification();
-
-        // Guardar datos adicionales en Firestore
-        final userId = userCredential.user!.uid;
-        await FirebaseFirestore.instance.collection('users').doc(userId).set({
-          'name': _nameController.text.trim(),
-          'email': _emailController.text.trim(),
-          'phone': _phoneController.text.trim(),
-          'followers': [],
-          'following': [],
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-
+    if (_formKey.currentState!.validate()) {
+      try {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Usuario registrado con éxito. Por favor, verifica tu correo electrónico.')),
+          const SnackBar(content: Text('Registrando usuario...')),
         );
 
-        _showConfirmationDialog();
-      }
-    } catch (e) {
-      String errorMessage = 'Ocurrió un error: ${e.toString()}';
-      if (e is FirebaseAuthException) {
-        switch (e.code) {
-          case 'weak-password':
-            errorMessage = 'La contraseña es demasiado débil.';
-            break;
-          case 'email-already-in-use':
-            errorMessage = 'Ya existe una cuenta con este correo electrónico.';
-            break;
-          case 'invalid-email':
-            errorMessage = 'El correo electrónico no es válido.';
-            break;
-          default:
-            errorMessage = 'Error al registrar usuario: ${e.message}';
+        // *** CAMBIO CLAVE AQUÍ: Convertir el email a minúsculas ANTES de usarlo ***
+        final String emailToLower = _emailController.text.trim().toLowerCase();
+        final String password = _passwordController.text; // La contraseña no se modifica a minúsculas
+
+        UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+          email: emailToLower, // Usa el email en minúsculas para Firebase Authentication
+          password: password,
+        );
+
+        if (userCredential.user != null) {
+          await userCredential.user!.updateDisplayName(_nameController.text.trim());
+          // Aunque el email de Firebase Auth se guarda en minúsculas,
+          // la verificación de email se envía al email original si no se especifica lo contrario.
+          // Si necesitas que el email de verificación también sea en minúsculas, tendrías que manejarlo a otro nivel,
+          // pero para la búsqueda en Firestore, lo importante es cómo se guarda el campo 'email'.
+          await userCredential.user!.sendEmailVerification();
+
+          // Guardar datos adicionales en Firestore
+          final userId = userCredential.user!.uid;
+          await FirebaseFirestore.instance.collection('users').doc(userId).set({
+            'name': _nameController.text.trim(),
+            'email': emailToLower, // <-- ¡GUARDAMOS EL EMAIL EN MINÚSCULAS EN FIRESTORE!
+            'phone': _phoneController.text.trim(),
+            'followers': [],
+            'following': [],
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Usuario registrado con éxito. Por favor, verifica tu correo electrónico.')),
+          );
+
+          _showConfirmationDialog();
         }
+      } catch (e) {
+        String errorMessage = 'Ocurrió un error: ${e.toString()}';
+        if (e is FirebaseAuthException) {
+          switch (e.code) {
+            case 'weak-password':
+              errorMessage = 'La contraseña es demasiado débil.';
+              break;
+            case 'email-already-in-use':
+              errorMessage = 'Ya existe una cuenta con este correo electrónico.';
+              break;
+            case 'invalid-email':
+              errorMessage = 'El correo electrónico no es válido.';
+              break;
+            default:
+              errorMessage = 'Error al registrar usuario: ${e.message}';
+          }
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMessage)),
-      );
     }
   }
-}
 
   // Función para mostrar el diálogo de confirmación
   void _showConfirmationDialog() {
@@ -333,4 +341,3 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 }
-
