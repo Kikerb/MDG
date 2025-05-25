@@ -8,6 +8,7 @@ import 'screens/signUp/signUp_screen.dart';
 import 'screens/principal_sroll/Scroll.dart'; 
 import 'screens/splash/splash_screen.dart';
 import 'screens/principal_sroll/garage.dart'; 
+import 'screens/search/search_screen.dart';
 
 // Definimos constantes para las rutas de las pantallas para facilitar la navegación y evitar errores tipográficos.
 const String splashScreenRoute = '/splash';
@@ -16,6 +17,7 @@ const String loginScreenRoute = '/login';
 const String signUpScreenRoute = '/signUp'; 
 const String scrollScreenRoute = '/scroll'; 
 const String garageScreenRoute = '/garage';
+const String searchScreenRoute = '/search';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,6 +48,7 @@ class MyApp extends StatelessWidget {
         signUpScreenRoute: (context) => const SignUpScreen(), 
         scrollScreenRoute: (context) => const ScrollScreen(), 
         garageScreenRoute: (context) => const GarageScreen(),
+        searchScreenRoute: (context) => const SearchScreen(),
       },
     );
   }
