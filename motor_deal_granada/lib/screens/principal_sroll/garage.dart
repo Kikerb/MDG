@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../main.dart';
-import '../../widgets/Posts.dart';
+import 'Posts.dart';
 import '../../widgets/bottom_navigation_bar.dart';
 
 import '../../screens/principal_sroll/ConfiguracionUser.dart';
@@ -383,10 +383,11 @@ class _GarageScreenState extends State<GarageScreen> {
                               postId: doc.id,
                               username: data['username'] ?? 'Usuario Desconocido',
                               imageUrl: data['imageUrl'] ?? 'https://via.placeholder.com/150',
+                              likes: data['likes'] ?? 0,
+                              comments: data['comments'] ?? 0,
+                              shares: data['shares'] ?? 0,
                               description: data['description'] ?? '',
-                              likes: data['likesCount'] ?? 0,
-                              comments: data['commentsCount'] ?? 0,
-                              shares: data['sharesCount'] ?? 0,
+                              isLiked: false,
                               onLike: () => _handleLike(doc.id, data),
                               onComment: () => _handleComment(doc.id),
                             );

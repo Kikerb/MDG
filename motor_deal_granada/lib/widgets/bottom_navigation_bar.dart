@@ -34,15 +34,15 @@ class CustomBottomNavigationBar extends StatelessWidget {
           case 1:
             // Garaje
             // Solo navega si no estamos ya en esta pantalla
-            if (ModalRoute.of(context)?.settings.name != garageScreenRoute) {
-              Navigator.of(context).pushReplacementNamed(garageScreenRoute);
+            if (ModalRoute.of(context)?.settings.name != buscarScreenRoute) {
+              Navigator.of(context).pushReplacementNamed(buscarScreenRoute);
             }
             break;
           case 2:
             // Buscar
             // Solo navega si no estamos ya en esta pantalla
-            if (ModalRoute.of(context)?.settings.name != searchScreenRoute) {
-              Navigator.of(context).pushReplacementNamed(searchScreenRoute);
+            if (ModalRoute.of(context)?.settings.name != garageScreenRoute) {
+              Navigator.of(context).pushReplacementNamed(garageScreenRoute);
             }
             break;
         }
@@ -53,12 +53,12 @@ class CustomBottomNavigationBar extends StatelessWidget {
           label: 'Inicio',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.warehouse), // Icono de garaje
-          label: 'Garaje',
+          icon: Icon(Icons.search), // Icono de garaje
+          label: 'Buscar',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.search), // Icono de lupita 
-          label: 'Buscar',
+          icon: Icon(Icons.warehouse), // Icono de lupita 
+          label: 'Garage',
         ),
       ],
     );
