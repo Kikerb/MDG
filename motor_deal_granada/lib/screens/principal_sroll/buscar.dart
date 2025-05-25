@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:motor_deal_granada/screens/principal_sroll/public_garage_screen.dart';
+
 import '../../main.dart'; // Asegúrate de que estas rutas sean correctas
 
 class BuscarScreen extends StatefulWidget {
@@ -248,33 +250,38 @@ class _BuscarScreenState extends State<BuscarScreen> {
     );
   }
 
-  Widget _buildUserTile(QueryDocumentSnapshot user) {
-    final data = user.data() as Map<String, dynamic>? ?? {};
-    // Asumimos que siempre habrá un 'email' para los usuarios buscados.
-    // Si 'username' no existe, este campo se puede omitir o inicializar como vacío.
-    final username = data['username'] ?? ''; // Si existe un 'username', se usará, si no, vacío.
-    final email = data['email'] ?? 'Email no disponible'; // Valor por defecto si 'email' no existe
+  // En tu BuscarScreen
+// En tu BuscarScreen
+Widget _buildUserTile(QueryDocumentSnapshot user) {
+  final data = user.data() as Map<String, dynamic>? ?? {};
+  final String email = (data['email'] is String) ? data['email'] : 'Email no disponible';
+  final String username = (data['username'] is String) ? data['username'] : '';
+  final String titleText = username.isNotEmpty ? username : email;
+  final String subtitleText = email;
+  final String profileImageUrl = (data['profileImageUrl'] is String)
+      ? data['profileImageUrl']
+      : 'https://i.imgur.com/BoN9kdC.png';
 
-    // Decide qué mostrar como título principal: si hay un username, lo mostramos, si no, el email.
-    final titleText = username.isNotEmpty ? username : email;
-    // El subtítulo siempre será el email (si está disponible)
-    final subtitleText = email;
-
-    return ListTile(
-      leading: CircleAvatar(
-        // Asegúrate de que 'profileImageUrl' sea el campo correcto en tu documento
-        backgroundImage: NetworkImage(data['profileImageUrl'] ?? 'https://i.imgur.com/BoN9kdC.png'),
-        radius: 24,
-      ),
-      title: Text(titleText, style: const TextStyle(color: Colors.white)),
-      subtitle: Text(subtitleText, style: const TextStyle(color: Colors.white54)),
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ver perfil de ${titleText}')),
-        );
-      },
-    );
-  }
+  return ListTile(
+    leading: CircleAvatar(
+      backgroundImage: NetworkImage(profileImageUrl),
+      radius: 24,
+    ),
+    title: Text(titleText, style: const TextStyle(color: Colors.white)),
+    subtitle: Text(subtitleText, style: const TextStyle(color: Colors.white54)),
+    onTap: () {
+      // *** CAMBIO AQUÍ ***
+      // Navegar a la nueva pantalla PublicGarageScreen, pasándole el ID del usuario
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => PublicGarageScreen(userId: user.id), // 'user.id' es el UID del usuario
+        ),
+      );
+      // O, si defines una ruta nombrada para PublicGarageScreen:
+      // Navigator.of(context).pushNamed(publicGarageScreenRoute, arguments: user.id);
+    },
+  );
+}
 
   Widget _buildVehicleTile(QueryDocumentSnapshot vehicle) {
     final data = vehicle.data() as Map<String, dynamic>? ?? {};
