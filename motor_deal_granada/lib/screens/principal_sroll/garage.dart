@@ -221,230 +221,240 @@ class _GarageScreenState extends State<GarageScreen> {
         final userEmail = user.email ?? 'Usuario desconocido';
         final userId = user.uid;
 
-        return FutureBuilder<String?>(
-          future: _getProfileImageUrl(userId),
-          builder: (context, snapshotUrl) {
-            String imageUrl = 'https://i.imgur.com/BoN9kdC.png';
-            if (snapshotUrl.connectionState == ConnectionState.done &&
-                snapshotUrl.data?.isNotEmpty == true) {
-              imageUrl = snapshotUrl.data!;
-            }
-
-            return Scaffold(
-              backgroundColor: Colors.black,
-
-              appBar: AppBar(
-                backgroundColor: Colors.black,
-                elevation: 0,
-                title: const Text(
-                  'Mi Garaje',
+        return Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            elevation: 0,
+            title: const Text(
+              'Mi Garaje',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+            ),
+            centerTitle: true,
+            leading: IconButton(
+              icon: const Icon(Icons.settings, color: Colors.white),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ConfiguracionUser(),
+                  ),
+                );
+              },
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.directions_car, color: Colors.white),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const SubirCocheScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+          body: SingleChildScrollView(
+            child: Column(
+              children: [
+                const SizedBox(height: 40),
+                const Text(
+                  'GARAGE',
                   style: TextStyle(
-                    color: Colors.white,
+                    fontSize: 28,
+                    color: Colors.purpleAccent,
                     fontWeight: FontWeight.bold,
-                    fontSize: 20,
                   ),
                 ),
-                centerTitle: true,
-                leading: IconButton(
-                  icon: const Icon(Icons.settings, color: Colors.white),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ConfiguracionUser(),
-                      ),
-                    );
+                const SizedBox(height: 12),
+                GestureDetector(
+                  onTapDown: (details) {
+                    tapPosition = details.globalPosition;
                   },
-                ),
-                actions: [
-                  IconButton(
-                    icon: const Icon(Icons.directions_car, color: Colors.white),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const SubirCocheScreen(),
-                        ),
+                  onTap: () {
+                    if (tapPosition != null) {
+                      _showProfileMenu(context, tapPosition!);
+                    }
+                  },
+                  child: FutureBuilder<String?>( // Mantenemos FutureBuilder para la URL de la imagen si es lo que usas
+                    future: _getProfileImageUrl(userId),
+                    builder: (context, snapshotUrl) {
+                      String imageUrl = 'https://i.imgur.com/BoN9kdC.png';
+                      if (snapshotUrl.connectionState == ConnectionState.done &&
+                          snapshotUrl.data?.isNotEmpty == true) {
+                        imageUrl = snapshotUrl.data!;
+                      }
+                      return CircleAvatar(
+                        radius: 40,
+                        backgroundImage: NetworkImage(imageUrl),
                       );
                     },
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  userEmail,
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 12),
+                // --- CAMBIO CLAVE AQUÍ: Usamos StreamBuilder para los contadores ---
+                StreamBuilder<DocumentSnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(userId)
+                      .snapshots(), // <-- Escucha los cambios en tiempo real
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Text(
+                        'Cargando contadores...',
+                        style: TextStyle(color: Colors.white),
+                      );
+                    }
+                    if (snapshot.hasError) {
+                      print('Error al cargar contadores en GarageScreen: ${snapshot.error}');
+                      return Text(
+                        'Error al cargar contadores: ${snapshot.error}',
+                        style: const TextStyle(color: Colors.red),
+                      );
+                    }
+                    if (!snapshot.hasData || !snapshot.data!.exists) {
+                      return const Text(
+                        'Seguidos: 0   Seguidores: 0',
+                        style: TextStyle(color: Colors.white),
+                      );
+                    }
 
-              body: SingleChildScrollView(
-                child: Column(
+                    final userDoc = snapshot.data!;
+                    final data = userDoc.data() as Map<String, dynamic>;
+                    // Acceder a 'following' y 'followers' directamente como listas
+                    final List<dynamic> followersList = data['followers'] ?? [];
+                    final List<dynamic> followingList = data['following'] ?? [];
+
+                    final int seguidores = followersList.length;
+                    final int seguidos = followingList.length;
+
+                    return Text(
+                      'Seguidos: $seguidos   Seguidores: $seguidores',
+                      style: const TextStyle(color: Colors.white),
+                    );
+                  },
+                ),
+                // --- FIN DEL CAMBIO CLAVE ---
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const SizedBox(height: 40),
-                    const Text(
-                      'GARAGE',
-                      style: TextStyle(
-                        fontSize: 28,
-                        color: Colors.purpleAccent,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    GestureDetector(
-                      onTapDown: (details) {
-                        tapPosition = details.globalPosition;
-                      },
-                      onTap: () {
-                        if (tapPosition != null) {
-                          _showProfileMenu(context, tapPosition!);
-                        }
-                      },
-                      child: CircleAvatar(
-                        radius: 40,
-                        backgroundImage: NetworkImage(imageUrl),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      userEmail,
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                    const SizedBox(height: 12),
-                    FutureBuilder<DocumentSnapshot>(
-                      future:
-                          FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(userId)
-                              .get(),
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasData || !snapshot.data!.exists) {
-                          return const Text(
-                            'Seguidos: 0   Seguidores: 0',
-                            style: TextStyle(color: Colors.white),
-                          );
-                        }
-                        final userDoc = snapshot.data!;
-                        final data = userDoc.data() as Map<String, dynamic>;
-                        final seguidores =
-                            data.containsKey('followersCount')
-                                ? data['followersCount']
-                                : 0;
-                        final seguidos =
-                            data.containsKey('followingCount')
-                                ? data['followingCount']
-                                : 0;
-                        return Text(
-                          'Seguidos: $seguidos   Seguidores: $seguidores',
-                          style: const TextStyle(color: Colors.white),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _buildFilterButton('Todos'),
-                        const SizedBox(width: 8),
-                        _buildFilterButton('En venta'),
-                        const SizedBox(width: 8),
-                        _buildFilterButton('Vendido'),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    StreamBuilder<QuerySnapshot>(
-                      stream:
-                          FirebaseFirestore.instance
-                              .collection('posts')
-                              .where('userId', isEqualTo: userId)
-                              .orderBy('timestamp', descending: true)
-                              .snapshots(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                            child: CircularProgressIndicator(
-                              color: Colors.purpleAccent,
-                            ),
-                          );
-                        }
-                        if (snapshot.hasError) {
-                          print(
-                            'Error al cargar posts del usuario: ${snapshot.error}',
-                          );
-                          return Center(
-                            child: Text(
-                              'Error al cargar tus publicaciones: ${snapshot.error}',
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                          );
-                        }
-                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                          return const Center(
-                            child: Text(
-                              'Aún no tienes publicaciones en tu garaje.',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          );
-                        }
-
-                        final filteredDocs =
-                            snapshot.data!.docs.where((doc) {
-                              if (selectedFilter == 'Todos') return true;
-                              final data = doc.data() as Map<String, dynamic>;
-                              if (selectedFilter == 'En venta') {
-                                return (data['currentStatus'] == 'En Venta' ||
-                                    data['currentStatus'] == 'Escucha Ofertas');
-                              }
-                              if (selectedFilter == 'Vendido') {
-                                return data['currentStatus'] == 'Vendido';
-                              }
-                              return true;
-                            }).toList();
-
-                        if (filteredDocs.isEmpty) {
-                          return Center(
-                            child: Text(
-                              'No hay publicaciones "${selectedFilter.toLowerCase()}" para mostrar.',
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                          );
-                        }
-
-                        return ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: filteredDocs.length,
-                          itemBuilder: (context, index) {
-                            final doc = filteredDocs[index];
-                            final data = doc.data() as Map<String, dynamic>;
-
-                            return PostCard(
-                              postId: doc.id,
-                              username:
-                                  data['username'] ?? 'Usuario Desconocido',
-                              imageUrl:
-                                  data['imageUrl'] ??
-                                  'https://via.placeholder.com/150',
-                              likes: data['likes'] ?? 0,
-                              comments: data['comments'] ?? 0,
-                              shares: data['shares'] ?? 0,
-                              description: data['description'] ?? '',
-                              isLiked: false,
-                              onLike: () => _handleLike(doc.id, data),
-                              onComment: () => _handleComment(doc.id),
-                            );
-                          },
-                        );
-                      },
-                    ),
+                    _buildFilterButton('Todos'),
+                    const SizedBox(width: 8),
+                    _buildFilterButton('En venta'),
+                    const SizedBox(width: 8),
+                    _buildFilterButton('Vendido'),
                   ],
                 ),
-              ),
+                const SizedBox(height: 16),
+                StreamBuilder<QuerySnapshot>(
+                  stream:
+                      FirebaseFirestore.instance
+                          .collection('posts')
+                          .where('userId', isEqualTo: userId)
+                          .orderBy('timestamp', descending: true)
+                          .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.purpleAccent,
+                        ),
+                      );
+                    }
+                    if (snapshot.hasError) {
+                      print(
+                          'Error al cargar posts del usuario: ${snapshot.error}',
+                      );
+                      return Center(
+                        child: Text(
+                          'Error al cargar tus publicaciones: ${snapshot.error}',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      );
+                    }
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'Aún no tienes publicaciones en tu garaje.',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      );
+                    }
 
-              bottomNavigationBar: CustomBottomNavigationBar(
-                currentIndex: _currentIndex,
-                onItemSelected: (index) {
-                  setState(() {
-                    _currentIndex = index;
-                  });
-                },
-              ),
-            );
-          },
+                    final filteredDocs =
+                        snapshot.data!.docs.where((doc) {
+                          if (selectedFilter == 'Todos') return true;
+                          final data = doc.data() as Map<String, dynamic>;
+                          if (selectedFilter == 'En venta') {
+                            return (data['currentStatus'] == 'En Venta' ||
+                                  data['currentStatus'] == 'Escucha Ofertas');
+                          }
+                          if (selectedFilter == 'Vendido') {
+                            return data['currentStatus'] == 'Vendido';
+                          }
+                          return true;
+                        }).toList();
+
+                    if (filteredDocs.isEmpty) {
+                      return Center(
+                        child: Text(
+                          'No hay publicaciones "${selectedFilter.toLowerCase()}" para mostrar.',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: filteredDocs.length,
+                      itemBuilder: (context, index) {
+                        final doc = filteredDocs[index];
+                        final data = doc.data() as Map<String, dynamic>;
+
+                        return PostCard(
+                          postId: doc.id,
+                          username:
+                              data['username'] ?? 'Usuario Desconocido',
+                          imageUrl:
+                              data['imageUrl'] ??
+                              'https://via.placeholder.com/150',
+                          likes: data['likes'] ?? 0,
+                          comments: data['comments'] ?? 0,
+                          shares: data['shares'] ?? 0,
+                          description: data['description'] ?? '',
+                          isLiked: false,
+                          onLike: () => _handleLike(doc.id, data),
+                          onComment: () => _handleComment(doc.id),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          bottomNavigationBar: CustomBottomNavigationBar(
+            currentIndex: _currentIndex,
+            onItemSelected: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+          ),
         );
       },
     );
