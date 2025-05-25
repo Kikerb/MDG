@@ -27,7 +27,11 @@ class _GarageScreenState extends State<GarageScreen> {
 
   Future<String?> _getProfileImageUrl(String userId) async {
     try {
-      final doc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .get();
       if (doc.exists) {
         return doc.data()?['profileImageUrl'] as String?;
       }
@@ -46,7 +50,10 @@ class _GarageScreenState extends State<GarageScreen> {
             children: [
               ListTile(
                 leading: const Icon(Icons.camera_alt, color: Colors.white),
-                title: const Text('Usar cámara', style: TextStyle(color: Colors.white)),
+                title: const Text(
+                  'Usar cámara',
+                  style: TextStyle(color: Colors.white),
+                ),
                 tileColor: Colors.black,
                 onTap: () {
                   Navigator.pop(context);
@@ -55,7 +62,10 @@ class _GarageScreenState extends State<GarageScreen> {
               ),
               ListTile(
                 leading: const Icon(Icons.photo_library, color: Colors.white),
-                title: const Text('Seleccionar de galería', style: TextStyle(color: Colors.white)),
+                title: const Text(
+                  'Seleccionar de galería',
+                  style: TextStyle(color: Colors.white),
+                ),
                 tileColor: Colors.black,
                 onTap: () {
                   Navigator.pop(context);
@@ -186,7 +196,9 @@ class _GarageScreenState extends State<GarageScreen> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             backgroundColor: Colors.black,
-            body: Center(child: CircularProgressIndicator(color: Colors.purpleAccent)),
+            body: Center(
+              child: CircularProgressIndicator(color: Colors.purpleAccent),
+            ),
           );
         }
 
@@ -293,7 +305,11 @@ class _GarageScreenState extends State<GarageScreen> {
                     ),
                     const SizedBox(height: 12),
                     FutureBuilder<DocumentSnapshot>(
-                      future: FirebaseFirestore.instance.collection('users').doc(userId).get(),
+                      future:
+                          FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(userId)
+                              .get(),
                       builder: (context, snapshot) {
                         if (!snapshot.hasData || !snapshot.data!.exists) {
                           return const Text(
@@ -302,8 +318,15 @@ class _GarageScreenState extends State<GarageScreen> {
                           );
                         }
                         final userDoc = snapshot.data!;
-                        final seguidores = userDoc['followersCount'] ?? 0;
-                        final seguidos = userDoc['followingCount'] ?? 0;
+                        final data = userDoc.data() as Map<String, dynamic>;
+                        final seguidores =
+                            data.containsKey('followersCount')
+                                ? data['followersCount']
+                                : 0;
+                        final seguidos =
+                            data.containsKey('followingCount')
+                                ? data['followingCount']
+                                : 0;
                         return Text(
                           'Seguidos: $seguidos   Seguidores: $seguidores',
                           style: const TextStyle(color: Colors.white),
@@ -323,17 +346,25 @@ class _GarageScreenState extends State<GarageScreen> {
                     ),
                     const SizedBox(height: 16),
                     StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('posts')
-                          .where('userId', isEqualTo: userId)
-                          .orderBy('timestamp', descending: true)
-                          .snapshots(),
+                      stream:
+                          FirebaseFirestore.instance
+                              .collection('posts')
+                              .where('userId', isEqualTo: userId)
+                              .orderBy('timestamp', descending: true)
+                              .snapshots(),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator(color: Colors.purpleAccent));
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              color: Colors.purpleAccent,
+                            ),
+                          );
                         }
                         if (snapshot.hasError) {
-                          print('Error al cargar posts del usuario: ${snapshot.error}');
+                          print(
+                            'Error al cargar posts del usuario: ${snapshot.error}',
+                          );
                           return Center(
                             child: Text(
                               'Error al cargar tus publicaciones: ${snapshot.error}',
@@ -350,17 +381,19 @@ class _GarageScreenState extends State<GarageScreen> {
                           );
                         }
 
-                        final filteredDocs = snapshot.data!.docs.where((doc) {
-                          if (selectedFilter == 'Todos') return true;
-                          final data = doc.data() as Map<String, dynamic>;
-                          if (selectedFilter == 'En venta') {
-                            return (data['currentStatus'] == 'En Venta' || data['currentStatus'] == 'Escucha Ofertas');
-                          }
-                          if (selectedFilter == 'Vendido') {
-                            return data['currentStatus'] == 'Vendido';
-                          }
-                          return true;
-                        }).toList();
+                        final filteredDocs =
+                            snapshot.data!.docs.where((doc) {
+                              if (selectedFilter == 'Todos') return true;
+                              final data = doc.data() as Map<String, dynamic>;
+                              if (selectedFilter == 'En venta') {
+                                return (data['currentStatus'] == 'En Venta' ||
+                                    data['currentStatus'] == 'Escucha Ofertas');
+                              }
+                              if (selectedFilter == 'Vendido') {
+                                return data['currentStatus'] == 'Vendido';
+                              }
+                              return true;
+                            }).toList();
 
                         if (filteredDocs.isEmpty) {
                           return Center(
@@ -381,8 +414,11 @@ class _GarageScreenState extends State<GarageScreen> {
 
                             return PostCard(
                               postId: doc.id,
-                              username: data['username'] ?? 'Usuario Desconocido',
-                              imageUrl: data['imageUrl'] ?? 'https://via.placeholder.com/150',
+                              username:
+                                  data['username'] ?? 'Usuario Desconocido',
+                              imageUrl:
+                                  data['imageUrl'] ??
+                                  'https://via.placeholder.com/150',
                               likes: data['likes'] ?? 0,
                               comments: data['comments'] ?? 0,
                               shares: data['shares'] ?? 0,
