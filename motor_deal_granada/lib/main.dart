@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:motor_deal_granada/screens/principal_sroll/Noticias_screen.dart';
 
 import 'firebase_options.dart';
 import 'screens/auth/auth_screen.dart';
@@ -8,7 +9,8 @@ import 'screens/signUp/signUp_screen.dart';
 import 'screens/principal_sroll/Scroll.dart'; 
 import 'screens/splash/splash_screen.dart';
 import 'screens/principal_sroll/garage.dart'; 
-import 'screens/search/search_screen.dart';
+
+import 'screens/principal_sroll/buscar.dart'; 
 
 // Definimos constantes para las rutas de las pantallas para facilitar la navegación y evitar errores tipográficos.
 const String splashScreenRoute = '/splash';
@@ -17,7 +19,8 @@ const String loginScreenRoute = '/login';
 const String signUpScreenRoute = '/signUp'; 
 const String scrollScreenRoute = '/scroll'; 
 const String garageScreenRoute = '/garage';
-const String searchScreenRoute = '/search';
+const String buscarScreenRoute = '/buscar';
+const String noticiasScreenRoute = '/noticias';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,7 +51,8 @@ class MyApp extends StatelessWidget {
         signUpScreenRoute: (context) => const SignUpScreen(), 
         scrollScreenRoute: (context) => const ScrollScreen(), 
         garageScreenRoute: (context) => const GarageScreen(),
-        searchScreenRoute: (context) => const SearchScreen(),
+        buscarScreenRoute: (context) => const BuscarScreen(),
+        noticiasScreenRoute: (context) => const NoticiasScreen(),
       },
     );
   }
