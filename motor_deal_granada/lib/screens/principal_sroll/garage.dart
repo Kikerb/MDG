@@ -157,24 +157,6 @@ class _GarageScreenState extends State<GarageScreen> {
         ),
       ),
       // Botón flotante para añadir un vehículo
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const AddVehicleScreen()),
-          );
-        },
-        label: const Text('Vender Mi Vehículo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        icon: const Icon(Icons.add_business_outlined, size: 24), // Ícono de tienda/venta
-        backgroundColor: Colors.lightGreenAccent, // Un color que resalte mucho para la venta
-        foregroundColor: const Color(0xFF1A0033), // Color de texto oscuro para contraste
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.0),
-          side: const BorderSide(color: Colors.white, width: 2), // Borde blanco para mayor destaque
-        ),
-        elevation: 10, // Sombra para que flote más
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat, // Centra el botón abajo
 
       // Integración del CustomBottomNavigationBar
       bottomNavigationBar: CustomBottomNavigationBar(
