@@ -1,13 +1,16 @@
+// lib/screens/principal_sroll/Scroll.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import 'Posts.dart';
-import '../../main.dart';
-import 'CommentsScreen.dart';
-import 'NotificationsScreen.dart';
-import '../../widgets/bottom_navigation_bar.dart';
-import 'chat_principal.dart';
+// Importaciones corregidas según tu estructura de carpetas
+import 'Posts.dart'; // Correcto, ya que Posts.dart está en el mismo directorio
+import '../../main.dart'; // Correcto
+import 'CommentsScreen.dart'; // Correcto
+import 'NotificationsScreen.dart'; // Correcto
+import '../../widgets/bottom_navigation_bar.dart'; // Correcto
+import 'chat_principal.dart'; // Correcto
 
 class ScrollScreen extends StatefulWidget {
   const ScrollScreen({super.key});
@@ -17,56 +20,52 @@ class ScrollScreen extends StatefulWidget {
 }
 
 class _ScrollScreenState extends State<ScrollScreen> {
-  bool _defaultPostInserted = false;
-  String? currentUserId;
+  // Eliminamos _defaultPostInserted y _insertDefaultPost completamente (ya no es necesario)
+  String? _currentUserId; // Usamos la convención _ para variables de estado privadas
   int _currentIndex = 0; // Índice inicial para Inicio (0)
 
   @override
   void initState() {
     super.initState();
-    _insertDefaultPost();
+    _initializeUser();
+  }
 
+  Future<void> _initializeUser() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       setState(() {
-        currentUserId = user.uid;
+        _currentUserId = user.uid;
       });
       _addLoginNotification(user.uid, user.email ?? 'Usuario');
+    } else {
+      print('Usuario no logueado al iniciar ScrollScreen. Algunas funcionalidades pueden estar limitadas.');
     }
   }
 
   Future<void> _addLoginNotification(String userId, String username) async {
-    await FirebaseFirestore.instance.collection('Notifications').add({
-      'userId': userId,
-      'message': 'Sesión iniciada por $username',
-      'timestamp': FieldValue.serverTimestamp(),
-    });
+    try {
+      await FirebaseFirestore.instance.collection('Notifications').add({
+        'userId': userId,
+        'message': 'Sesión iniciada por $username',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+      print('Notificación de inicio de sesión añadida.');
+    } catch (e) {
+      print('Error al añadir notificación de inicio de sesión: $e');
+    }
   }
 
-  Future<void> _insertDefaultPost() async {
-    if (_defaultPostInserted) return;
+  // Las funciones _insertDefaultPost y _addLoginNotification ya están en el código.
 
-    final postsSnapshot =
-        await FirebaseFirestore.instance.collection('Posts').limit(1).get();
-
-    if (postsSnapshot.docs.isEmpty) {
-      await FirebaseFirestore.instance.collection('Posts').add({
-        'username': 'Admin',
-        'imageUrl': 'https://i.ytimg.com/vi/lZmrRlYNCbM/maxresdefault.jpg',
-        'likes': 0,
-        'comments': 0,
-        'shares': 0,
-        'description': 'Este es el post por defecto de MotorDeal Granada.',
-        'timestamp': FieldValue.serverTimestamp(),
-        'likedUsers': [],
-      });
+  Future<void> _handleLike(String postId) async {
+    if (_currentUserId == null) {
+      print('Error: _currentUserId es null. El usuario no está logueado para dar like.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Necesitas iniciar sesión para dar like.')),
+      );
+      return;
     }
 
-    _defaultPostInserted = true;
-  }
-
-  Future<void> _handleLike(String postId, Map<String, dynamic> data) async {
-    final userId = FirebaseAuth.instance.currentUser!.uid;
     final docRef = FirebaseFirestore.instance.collection('Posts').doc(postId);
 
     try {
@@ -76,30 +75,39 @@ class _ScrollScreenState extends State<ScrollScreen> {
         return;
       }
 
-      final data = docSnap.data();
-      final likedUsers = data != null && data.containsKey('likedUsers')
-          ? List<String>.from(data['likedUsers'])
-          : <String>[];
-      int likes = docSnap['likes'] ?? 0;
+      final postData = docSnap.data();
+      final List<String> likedUsers = List<String>.from(postData?['likedUsers'] ?? []);
+      int likes = postData?['likes'] ?? 0;
 
-      if (likedUsers.contains(userId)) {
-        likedUsers.remove(userId);
+      if (likedUsers.contains(_currentUserId)) {
+        likedUsers.remove(_currentUserId);
         likes = (likes > 0) ? likes - 1 : 0;
       } else {
-        likedUsers.add(userId);
+        likedUsers.add(_currentUserId!);
         likes += 1;
       }
 
       await docRef.update({'likedUsers': likedUsers, 'likes': likes});
-      setState(() {});
+      print('Like/Unlike actualizado para post: $postId, likes: $likes');
     } catch (e) {
-      print('Error actualizando likes: $e');
+      print('Error actualizando likes para post $postId: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al procesar el like: $e')),
+      );
     }
   }
 
   void _handleComment(String postId) {
+    print('Abriendo comentarios para post: $postId');
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => CommentsScreen(postId: postId)),
+    );
+  }
+
+  void _handleShare(String postId) {
+    print('Compartir post: $postId');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Función de compartir (futuro)')),
     );
   }
 
@@ -107,6 +115,7 @@ class _ScrollScreenState extends State<ScrollScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+
       appBar: AppBar(
         backgroundColor: Colors.black,
         elevation: 0,
@@ -122,6 +131,7 @@ class _ScrollScreenState extends State<ScrollScreen> {
         leading: IconButton(
           icon: const Icon(Icons.notifications_none, color: Colors.white),
           onPressed: () {
+            print('Navegando a NotificationsScreen');
             Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const NotificationsScreen()),
             );
@@ -131,6 +141,7 @@ class _ScrollScreenState extends State<ScrollScreen> {
           IconButton(
             icon: const Icon(Icons.article, color: Colors.white),
             onPressed: () {
+              print('Navegando a NoticiasScreen');
               Navigator.of(context).pushNamed(noticiasScreenRoute);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Abriendo Noticias')),
@@ -147,32 +158,32 @@ class _ScrollScreenState extends State<ScrollScreen> {
                 .orderBy('timestamp', descending: true)
                 .snapshots(),
             builder: (context, snapshot) {
-              if (snapshot.hasError) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(
+                  child: CircularProgressIndicator(color: Colors.purpleAccent),
+                );
+              }
+
+              if (snapshot.hasError) {
+                print('StreamBuilder Error: ${snapshot.error}');
+                return Center(
                   child: Text(
-                    'Error al cargar los posts. Inténtalo de nuevo.',
-                    style: TextStyle(color: Colors.white),
+                    'Error al cargar los posts: ${snapshot.error}',
+                    style: const TextStyle(color: Colors.white),
                   ),
                 );
               }
 
-              if (!snapshot.hasData) {
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                 return const Center(
-                  child:
-                      CircularProgressIndicator(color: Colors.purpleAccent),
+                  child: Text(
+                    'No hay publicaciones aún. ¡Sé el primero en publicar algo!',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 );
               }
 
               final posts = snapshot.data!.docs;
-
-              if (posts.isEmpty) {
-                return const Center(
-                  child: Text(
-                    'No hay publicaciones aún.',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                );
-              }
 
               return ListView.builder(
                 itemCount: posts.length,
@@ -180,23 +191,30 @@ class _ScrollScreenState extends State<ScrollScreen> {
                   final post = posts[index];
                   final data = post.data()! as Map<String, dynamic>;
 
-                  final List<dynamic> likedUsers =
-                      List<dynamic>.from(data['likedUsers'] ?? []);
-                  final isLiked = currentUserId != null &&
-                      likedUsers.contains(currentUserId);
+                  final List<String> likedUsers =
+                      List<String>.from(data['likedUsers'] ?? []);
+                  
+                  final bool isLikedByCurrentUser =
+                      _currentUserId != null && likedUsers.contains(_currentUserId);
 
                   return PostCard(
                     postId: post.id,
                     username: data['username'] ?? 'Usuario Desconocido',
-                    imageUrl: data['imageUrl'] ??
-                        'https://via.placeholder.com/150',
+                    imageUrl: data['imageUrl'] ?? 'https://via.placeholder.com/150/000000/FFFFFF?text=No+Image',
                     likes: data['likes'] ?? 0,
                     comments: data['comments'] ?? 0,
                     shares: data['shares'] ?? 0,
                     description: data['description'] ?? '',
-                    isLiked: isLiked,
-                    onLike: () => _handleLike(post.id, data),
+                    isLiked: isLikedByCurrentUser,
+                    onLike: () => _handleLike(post.id),
                     onComment: () => _handleComment(post.id),
+                    onShare: () => _handleShare(post.id),
+                    
+                    showActions: true,
+                    // No pasar price y status aquí, ya que es el feed principal
+                    showPrice: false, // Explicitamente false para el feed
+                    showStatus: false, // Explicitamente false para el feed
+                    showUsername: true,
                   );
                 },
               );
@@ -207,7 +225,7 @@ class _ScrollScreenState extends State<ScrollScreen> {
             right: 16,
             child: GestureDetector(
               onTap: () {
-                // Navega a la pantalla de chats
+                print('Navegando a ChatListScreen.');
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const ChatListScreen()),
                 );
@@ -217,6 +235,14 @@ class _ScrollScreenState extends State<ScrollScreen> {
                 decoration: BoxDecoration(
                   color: Colors.purpleAccent,
                   borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      spreadRadius: 2,
+                      blurRadius: 5,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
                 child: const Icon(Icons.contacts,
                     color: Colors.white, size: 32),
@@ -225,6 +251,7 @@ class _ScrollScreenState extends State<ScrollScreen> {
           ),
         ],
       ),
+
       bottomNavigationBar: CustomBottomNavigationBar(
         currentIndex: _currentIndex,
         onItemSelected: (index) {
