@@ -1,462 +1,224 @@
-import 'dart:io';
-
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-
-import '../../main.dart';
-import 'Posts.dart';
-import '../../widgets/bottom_navigation_bar.dart';
-
-import '../../screens/principal_sroll/ConfiguracionUser.dart';
-import '../../screens/principal_sroll/subir_coche.dart';
+import '../../models/vehicle_model.dart'; // Ajusta la ruta a tu VehicleModel
+import '../../screens/principal_sroll/Posts.dart'; // Ajusta la ruta a tu PostCard
+import '../../screens/principal_sroll/addvehiclescreen.dart'; // La pantalla para añadir vehículos
+import '../../screens/principal_sroll/VehicleDetailScreen.dart'; // La pantalla de detalles del vehículo
 
 class GarageScreen extends StatefulWidget {
-  const GarageScreen({super.key});
+  const GarageScreen({Key? key}) : super(key: key);
 
   @override
   State<GarageScreen> createState() => _GarageScreenState();
 }
 
 class _GarageScreenState extends State<GarageScreen> {
-  String selectedFilter = 'Todos';
-  int _currentIndex = 2;
-  Offset? tapPosition;
+  final int _maxGarageSlots = 3; // Define el número máximo de plazas de garaje
+  User? _currentUser; // El usuario autenticado
 
-  Future<String?> _getProfileImageUrl(String userId) async {
-    try {
-      final doc =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(userId)
-              .get();
-      if (doc.exists) {
-        return doc.data()?['profileImageUrl'] as String?;
-      }
-    } catch (e) {
-      print('Error obteniendo foto de perfil: $e');
-    }
-    return null;
-  }
-
-  Future<void> _mostrarSeleccionImagen(BuildContext context) async {
-    showModalBottomSheet(
-      context: context,
-      builder: (_) {
-        return SafeArea(
-          child: Wrap(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.camera_alt, color: Colors.white),
-                title: const Text(
-                  'Usar cámara',
-                  style: TextStyle(color: Colors.white),
-                ),
-                tileColor: Colors.black,
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(context, ImageSource.camera);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_library, color: Colors.white),
-                title: const Text(
-                  'Seleccionar de galería',
-                  style: TextStyle(color: Colors.white),
-                ),
-                tileColor: Colors.black,
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(context, ImageSource.gallery);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _pickImage(BuildContext context, ImageSource source) async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: source, imageQuality: 85);
-
-    if (picked != null) {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final file = File(picked.path);
-        final ref = FirebaseStorage.instance
-            .ref()
-            .child('profile_images')
-            .child('${user.uid}.jpg');
-
-        try {
-          await ref.putFile(file);
-          final url = await ref.getDownloadURL();
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .update({'profileImageUrl': url});
-          setState(() {});
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Foto de perfil actualizada.')),
-          );
-        } catch (e) {
-          print('Error al subir la imagen: $e');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error al subir la imagen: $e')),
-          );
-        }
-      }
-    }
-  }
-
-  void _showProfileMenu(BuildContext context, Offset tapPosition) async {
-    final RenderBox overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox;
-    final selected = await showMenu<String>(
-      context: context,
-      position: RelativeRect.fromRect(
-        Rect.fromLTWH(tapPosition.dx, tapPosition.dy, 0, 0),
-        Offset.zero & overlay.size,
-      ),
-      items: [
-        const PopupMenuItem(
-          value: 'cambiar_foto',
-          child: Row(
-            children: [
-              Icon(Icons.camera_alt, color: Colors.black),
-              SizedBox(width: 8),
-              Text('Cambiar Foto'),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'logout',
-          child: Row(
-            children: [
-              Icon(Icons.logout, color: Colors.black),
-              SizedBox(width: 8),
-              Text('Cerrar sesión'),
-            ],
-          ),
-        ),
-      ],
-    );
-
-    if (selected == 'cambiar_foto') {
-      _mostrarSeleccionImagen(context);
-    } else if (selected == 'logout') {
-      await FirebaseAuth.instance.signOut();
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed(loginScreenRoute);
-      }
-    }
-  }
-
-  Future<void> _handleLike(String postId, Map<String, dynamic> data) async {
-    final docRef = FirebaseFirestore.instance.collection('Posts').doc(postId);
-    try {
-      final currentLikes = (data['likes'] ?? 0) as int;
-      await docRef.update({'likes': currentLikes + 1});
-    } catch (e) {
-      print('Error actualizando likes: $e');
-    }
-  }
-
-  void _handleComment(String postId) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Abrir comentarios para post $postId')),
-    );
-  }
-
-  Widget _buildFilterButton(String text) {
-    final bool isSelected = selectedFilter == text;
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: isSelected ? Colors.purpleAccent : Colors.grey[700],
-        foregroundColor: Colors.white,
-      ),
-      onPressed: () {
-        setState(() {
-          selectedFilter = text;
-        });
-      },
-      child: Text(text),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _currentUser = FirebaseAuth.instance.currentUser;
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<User?>(
-      future: Future.value(FirebaseAuth.instance.currentUser),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            backgroundColor: Colors.black,
-            body: Center(
+    if (_currentUser == null) {
+      // Si no hay usuario logueado, muestra un mensaje o redirige
+      return const Scaffold(
+        backgroundColor: Color(0xFF1A0033),
+        appBar: AppBar(
+          title: Text('Mi Garaje', style: TextStyle(color: Colors.white)),
+          backgroundColor: Color(0xFF1A0033),
+          iconTheme: IconThemeData(color: Colors.white),
+        ),
+        body: Center(
+          child: Text(
+            'Inicia sesión para ver tu garaje.',
+            style: TextStyle(color: Colors.white70, fontSize: 18),
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF1A0033),
+      appBar: AppBar(
+        title: const Text('Mi Garaje', style: TextStyle(color: Colors.white)),
+        backgroundColor: const Color(0xFF1A0033),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        // Escucha los vehículos del usuario actual, ordenados por fecha de añadido
+        stream:
+            FirebaseFirestore.instance
+                .collection('vehicles')
+                .where('userId', isEqualTo: _currentUser!.uid)
+                .orderBy(
+                  'addedAt',
+                  descending: true,
+                ) // Ordena para asignar las plazas consistentemente
+                .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
               child: CircularProgressIndicator(color: Colors.purpleAccent),
-            ),
-          );
-        }
-
-        if (!snapshot.hasData || snapshot.data == null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.of(context).pushReplacementNamed(loginScreenRoute);
-          });
-          return const Scaffold(
-            backgroundColor: Colors.black,
-            body: Center(
+            );
+          }
+          if (snapshot.hasError) {
+            print('Error loading vehicles: ${snapshot.error}');
+            return Center(
               child: Text(
-                'No hay usuario autenticado. Redirigiendo...',
-                style: TextStyle(color: Colors.white),
+                'Error al cargar vehículos: ${snapshot.error}',
+                style: const TextStyle(color: Colors.redAccent, fontSize: 16),
               ),
-            ),
-          );
+            );
+          }
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            // Si no hay vehículos, muestra solo los botones de añadir
+            return _buildGarageGrid(context, []);
+          }
+
+          // Convertir los documentos a VehicleModel
+          final List<VehicleModel> vehicles =
+              snapshot.data!.docs
+                  .map((doc) => VehicleModel.fromFirestore(doc))
+                  .toList();
+
+          return _buildGarageGrid(context, vehicles);
+        },
+      ),
+    );
+  }
+
+  Widget _buildGarageGrid(BuildContext context, List<VehicleModel> vehicles) {
+    return GridView.builder(
+      padding: const EdgeInsets.all(16.0),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2, // 2 columnas por fila
+        crossAxisSpacing: 16.0, // Espacio horizontal entre tarjetas
+        mainAxisSpacing: 16.0, // Espacio vertical entre tarjetas
+        childAspectRatio: 0.7, // Ajusta la relación de aspecto de las tarjetas
+      ),
+      itemCount: _maxGarageSlots, // Muestra siempre el número máximo de plazas
+      itemBuilder: (context, index) {
+        // Intentar encontrar un vehículo para esta "plaza"
+        VehicleModel? vehicleInSlot;
+        if (index < vehicles.length) {
+          vehicleInSlot = vehicles[index];
         }
 
-        final user = snapshot.data!;
-        final userEmail = user.email ?? 'Usuario desconocido';
-        final userId = user.uid;
+        if (vehicleInSlot != null) {
+          // Si hay un vehículo en esta plaza, muestra su información
+          return _buildVehicleCard(context, vehicleInSlot);
+        } else {
+          // Si la plaza está vacía, muestra un botón para añadir un vehículo
+          return _buildAddVehicleButton(context, index);
+        }
+      },
+    );
+  }
 
-        return Scaffold(
-          backgroundColor: Colors.black,
-          appBar: AppBar(
-            backgroundColor: Colors.black,
-            elevation: 0,
-            title: const Text(
-              'Mi Garaje',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
-            ),
-            centerTitle: true,
-            leading: IconButton(
-              icon: const Icon(Icons.settings, color: Colors.white),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ConfiguracionUser(),
-                  ),
-                );
-              },
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.directions_car, color: Colors.white),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const SubirCocheScreen(),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-          body: SingleChildScrollView(
-            child: Column(
-              children: [
-                const SizedBox(height: 40),
-                const Text(
-                  'GARAGE',
-                  style: TextStyle(
-                    fontSize: 28,
-                    color: Colors.purpleAccent,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                GestureDetector(
-                  onTapDown: (details) {
-                    tapPosition = details.globalPosition;
-                  },
-                  onTap: () {
-                    if (tapPosition != null) {
-                      _showProfileMenu(context, tapPosition!);
-                    }
-                  },
-                  child: FutureBuilder<String?>( // Mantenemos FutureBuilder para la URL de la imagen si es lo que usas
-                    future: _getProfileImageUrl(userId),
-                    builder: (context, snapshotUrl) {
-                      String imageUrl = 'https://i.imgur.com/BoN9kdC.png';
-                      if (snapshotUrl.connectionState == ConnectionState.done &&
-                          snapshotUrl.data?.isNotEmpty == true) {
-                        imageUrl = snapshotUrl.data!;
-                      }
-                      return CircleAvatar(
-                        radius: 40,
-                        backgroundImage: NetworkImage(imageUrl),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  userEmail,
-                  style: const TextStyle(color: Colors.white70),
-                ),
-                const SizedBox(height: 12),
-                // --- CAMBIO CLAVE AQUÍ: Usamos StreamBuilder para los contadores ---
-                StreamBuilder<DocumentSnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(userId)
-                      .snapshots(), // <-- Escucha los cambios en tiempo real
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Text(
-                        'Cargando contadores...',
-                        style: TextStyle(color: Colors.white),
-                      );
-                    }
-                    if (snapshot.hasError) {
-                      print('Error al cargar contadores en GarageScreen: ${snapshot.error}');
-                      return Text(
-                        'Error al cargar contadores: ${snapshot.error}',
-                        style: const TextStyle(color: Colors.red),
-                      );
-                    }
-                    if (!snapshot.hasData || !snapshot.data!.exists) {
-                      return const Text(
-                        'Seguidos: 0   Seguidores: 0',
-                        style: TextStyle(color: Colors.white),
-                      );
-                    }
+  Widget _buildVehicleCard(BuildContext context, VehicleModel vehicle) {
+    // Aquí puedes usar un PostCard simplificado o un widget personalizado
+    // para mostrar el vehículo en la plaza de garaje.
+    // Usaremos un PostCard para reutilizar tu componente, pero simplificado.
 
-                    final userDoc = snapshot.data!;
-                    final data = userDoc.data() as Map<String, dynamic>;
-                    // Acceder a 'following' y 'followers' directamente como listas
-                    final List<dynamic> followersList = data['followers'] ?? [];
-                    final List<dynamic> followingList = data['following'] ?? [];
+    // Preparar el texto del precio y estado para el PostCard
+    String displayPrice = 'No disponible';
+    if (vehicle.currentStatus == 'En Venta' && vehicle.price != null) {
+      displayPrice =
+          '${vehicle.price!.toStringAsFixed(0)} ${vehicle.currency ?? ''}';
+    } else if (vehicle.currentStatus == 'Escucha Ofertas') {
+      displayPrice = 'Escucha Ofertas';
+    } else {
+      displayPrice =
+          vehicle.currentStatus; // Mostrar el estado si no es "En Venta"
+    }
 
-                    final int seguidores = followersList.length;
-                    final int seguidos = followingList.length;
-
-                    return Text(
-                      'Seguidos: $seguidos   Seguidores: $seguidores',
-                      style: const TextStyle(color: Colors.white),
-                    );
-                  },
-                ),
-                // --- FIN DEL CAMBIO CLAVE ---
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildFilterButton('Todos'),
-                    const SizedBox(width: 8),
-                    _buildFilterButton('En venta'),
-                    const SizedBox(width: 8),
-                    _buildFilterButton('Vendido'),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                StreamBuilder<QuerySnapshot>(
-                  stream:
-                      FirebaseFirestore.instance
-                          .collection('posts')
-                          .where('userId', isEqualTo: userId)
-                          .orderBy('timestamp', descending: true)
-                          .snapshots(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState ==
-                        ConnectionState.waiting) {
-                      return const Center(
-                        child: CircularProgressIndicator(
-                          color: Colors.purpleAccent,
-                        ),
-                      );
-                    }
-                    if (snapshot.hasError) {
-                      print(
-                          'Error al cargar posts del usuario: ${snapshot.error}',
-                      );
-                      return Center(
-                        child: Text(
-                          'Error al cargar tus publicaciones: ${snapshot.error}',
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      );
-                    }
-                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                      return const Center(
-                        child: Text(
-                          'Aún no tienes publicaciones en tu garaje.',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      );
-                    }
-
-                    final filteredDocs =
-                        snapshot.data!.docs.where((doc) {
-                          if (selectedFilter == 'Todos') return true;
-                          final data = doc.data() as Map<String, dynamic>;
-                          if (selectedFilter == 'En venta') {
-                            return (data['currentStatus'] == 'En Venta' ||
-                                  data['currentStatus'] == 'Escucha Ofertas');
-                          }
-                          if (selectedFilter == 'Vendido') {
-                            return data['currentStatus'] == 'Vendido';
-                          }
-                          return true;
-                        }).toList();
-
-                    if (filteredDocs.isEmpty) {
-                      return Center(
-                        child: Text(
-                          'No hay publicaciones "${selectedFilter.toLowerCase()}" para mostrar.',
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      );
-                    }
-
-                    return ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: filteredDocs.length,
-                      itemBuilder: (context, index) {
-                        final doc = filteredDocs[index];
-                        final data = doc.data() as Map<String, dynamic>;
-
-                        return PostCard(
-                          postId: doc.id,
-                          username:
-                              data['username'] ?? 'Usuario Desconocido',
-                          imageUrl:
-                              data['imageUrl'] ??
-                              'https://via.placeholder.com/150',
-                          likes: data['likes'] ?? 0,
-                          comments: data['comments'] ?? 0,
-                          shares: data['shares'] ?? 0,
-                          description: data['description'] ?? '',
-                          isLiked: false,
-                          onLike: () => _handleLike(doc.id, data),
-                          onComment: () => _handleComment(doc.id),
-                        );
-                      },
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-          bottomNavigationBar: CustomBottomNavigationBar(
-            currentIndex: _currentIndex,
-            onItemSelected: (index) {
-              setState(() {
-                _currentIndex = index;
-              });
-            },
+    return GestureDetector(
+      onTap: () {
+        // Al tocar el vehículo, navega a la pantalla de detalles
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VehicleDetailsScreen(vehicle: vehicle),
           ),
         );
       },
+      child: PostCard(
+        // Propiedades de PostCard (simplificadas para la vista de garaje)
+        postId: vehicle.id,
+        username: vehicle.userId, // O el nombre real del propietario
+        imageUrl: vehicle.mainImageUrl,
+        description: '${vehicle.brand} ${vehicle.model}', // Descripción corta
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        isLiked: false, // Acciones no son relevantes aquí
+        onLike: () {},
+        onComment: () {},
+        onShare: null, // Deshabilitar acciones
+        // Mostrar solo lo relevante para la plaza del garaje
+        showUsername: false, // No necesitamos el avatar/nombre de usuario aquí
+        showActions:
+            false, // No necesitamos botones de like/comentario/compartir aquí
+        showPrice: true, // Queremos mostrar el precio
+        price: displayPrice,
+        showStatus: true, // Queremos mostrar el estado
+        status: vehicle.currentStatus,
+      ),
+    );
+  }
+
+  Widget _buildAddVehicleButton(BuildContext context, int slotIndex) {
+    return Card(
+      color: const Color(0xFF1A0033),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.0),
+        side: const BorderSide(
+          color: Colors.purpleAccent,
+          width: 2,
+        ), // Borde distintivo
+      ),
+      elevation: 5,
+      child: InkWell(
+        // Para el efecto ripple al tocar
+        onTap: () async {
+          // Navegar a la pantalla de añadir vehículo y esperar un resultado
+          // Si AddVehicleScreen se hace con pop, el StreamBuilder refrescará la UI
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AddVehicleScreen()),
+          );
+          // Opcional: Si necesitas hacer algo específico después de añadir,
+          // puedes usar await y verificar si el vehículo se añadió (ej. retornando true)
+        },
+        borderRadius: BorderRadius.circular(12.0),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add_circle_outline, size: 60, color: Colors.white70),
+            SizedBox(height: 10),
+            Text(
+              'Añadir Vehículo',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 5),
+            Text(
+              'Plaza libre #${slotIndex + 1}',
+              style: TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

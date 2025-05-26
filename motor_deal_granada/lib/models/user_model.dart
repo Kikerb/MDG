@@ -13,6 +13,7 @@ class UserModel {
   final bool isPremiumUser; // Indica si el usuario tiene una suscripción premium
   final Timestamp lastActive; // Última vez que el usuario estuvo activo
   final List<String> interests; // Intereses del usuario para personalización del feed
+  final String? bio; // ¡Campo nuevo añadido!
 
   UserModel({
     required this.uid,
@@ -27,6 +28,7 @@ class UserModel {
     this.isPremiumUser = false,
     required this.lastActive,
     this.interests = const [],
+    this.bio, // ¡Añadido al constructor!
   });
 
   // Factory constructor para crear un UserModel desde un DocumentSnapshot de Firestore
@@ -45,6 +47,7 @@ class UserModel {
       isPremiumUser: data['isPremiumUser'] ?? false,
       lastActive: data['lastActive'] ?? Timestamp.now(), // Por defecto, la hora actual si no existe
       interests: List<String>.from(data['interests'] ?? []),
+      bio: data['bio'] as String?, // ¡Lectura del campo 'bio'!
     );
   }
 
@@ -62,6 +65,7 @@ class UserModel {
       'isPremiumUser': isPremiumUser,
       'lastActive': lastActive,
       'interests': interests,
+      'bio': bio, // ¡Escritura del campo 'bio'!
     };
   }
 
@@ -79,6 +83,7 @@ class UserModel {
     bool? isPremiumUser,
     Timestamp? lastActive,
     List<String>? interests,
+    String? bio, // ¡Añadido al copyWith!
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -93,6 +98,7 @@ class UserModel {
       isPremiumUser: isPremiumUser ?? this.isPremiumUser,
       lastActive: lastActive ?? this.lastActive,
       interests: interests ?? this.interests,
+      bio: bio ?? this.bio, // ¡Asignación del bio en copyWith!
     );
   }
 }
