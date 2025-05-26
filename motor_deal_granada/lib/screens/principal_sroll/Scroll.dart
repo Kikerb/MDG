@@ -7,6 +7,7 @@ import '../../main.dart';
 import 'CommentsScreen.dart';
 import 'NotificationsScreen.dart';
 import '../../widgets/bottom_navigation_bar.dart';
+import 'chat_principal.dart';
 
 class ScrollScreen extends StatefulWidget {
   const ScrollScreen({super.key});
@@ -106,7 +107,6 @@ class _ScrollScreenState extends State<ScrollScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-
       appBar: AppBar(
         backgroundColor: Colors.black,
         elevation: 0,
@@ -207,9 +207,9 @@ class _ScrollScreenState extends State<ScrollScreen> {
             right: 16,
             child: GestureDetector(
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Abrir contactos (futuro comportamiento)')),
+                // Navega a la pantalla de chats
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ChatListScreen()),
                 );
               },
               child: Container(
@@ -225,7 +225,6 @@ class _ScrollScreenState extends State<ScrollScreen> {
           ),
         ],
       ),
-
       bottomNavigationBar: CustomBottomNavigationBar(
         currentIndex: _currentIndex,
         onItemSelected: (index) {

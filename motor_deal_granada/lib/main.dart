@@ -1,7 +1,9 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:motor_deal_granada/screens/principal_sroll/Noticias_screen.dart';
-
+import 'package:motor_deal_granada/screens/principal_sroll/chat_screen.dart';
+import 'package:provider/provider.dart';
+import 'screens/principal_sroll/chat_edit.dart';
 import 'firebase_options.dart';
 import 'screens/auth/auth_screen.dart';
 import 'screens/login/login_screen.dart';
@@ -21,13 +23,20 @@ const String scrollScreenRoute = '/scroll';
 const String garageScreenRoute = '/garage';
 const String buscarScreenRoute = '/buscar';
 const String noticiasScreenRoute = '/noticias';
+const String chatScreenRoute = '/noticias';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform, // Usar configuración generada
+    options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const MyApp());
+  runApp(
+    // Envuelve con ChangeNotifierProvider
+    ChangeNotifierProvider(
+      create: (context) => ChatThemeProvider(), // Instancia tu ChatThemeProvider
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -53,6 +62,7 @@ class MyApp extends StatelessWidget {
         garageScreenRoute: (context) => const GarageScreen(),
         buscarScreenRoute: (context) => const BuscarScreen(),
         noticiasScreenRoute: (context) => const NoticiasScreen(),
+
       },
     );
   }
