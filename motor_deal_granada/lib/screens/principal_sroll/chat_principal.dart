@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/chat_model.dart';
 import 'chat_screen.dart';
+import 'create_group.dart'; // ¡Importa la nueva pantalla de creación de grupo!
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -37,6 +38,18 @@ class _ChatListScreenState extends State<ChatListScreen> {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
+        actions: [
+          // Nuevo botón para crear grupo
+          IconButton(
+            icon: const Icon(Icons.group_add, color: Colors.white), // Icono de grupo con un "+"
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CreateGroupScreen()),
+              );
+            },
+          ),
+        ],
       ),
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance.collection('users').doc(currentUser!.uid).snapshots(),
@@ -60,26 +73,15 @@ class _ChatListScreenState extends State<ChatListScreen> {
           final List<String> following = List<String>.from(userData?['following'] ?? []);
           final List<String> followers = List<String>.from(userData?['followers'] ?? []);
 
-          // *******************************************************************
-          // CAMBIO CLAVE AQUÍ: Filtrar solo usuarios que se siguen mutuamente
-          // *******************************************************************
           final Set<String> relevantUserIds = {};
-          // Convertir ambas listas a Sets para usar la intersección
           final Set<String> followingSet = following.toSet();
           final Set<String> followersSet = followers.toSet();
 
-          // Encontrar los UIDs que están en AMBAS listas (intersección)
           final Set<String> mutualFollowers = followingSet.intersection(followersSet);
 
-          // Agregar los mutuos seguidores a relevantUserIds
           for (var id in mutualFollowers) {
             relevantUserIds.add(id);
           }
-          // *******************************************************************
-          // FIN DEL CAMBIO CLAVE
-          // *******************************************************************
-
-          // Excluir el propio UID del usuario de la lista de IDs relevantes
           relevantUserIds.remove(currentUser!.uid);
 
           if (relevantUserIds.isEmpty) {
