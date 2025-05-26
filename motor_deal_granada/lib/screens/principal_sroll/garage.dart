@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
+import '../../main.dart'; // Importa main.dart para las rutas nombradas (asumiendo que tienes rutas nombradas como loginRoute)
+import '../../widgets/bottom_navigation_bar.dart'; // Importa tu barra de navegación
+
+import '../../screens/principal_sroll/ConfiguracionUser.dart'; // Ajusta la ruta si es necesario
 import '../../models/vehicle_model.dart'; // Ajusta la ruta a tu VehicleModel
-import '../../screens/principal_sroll/Posts.dart'; // Ajusta la ruta a tu PostCard
 import '../../screens/principal_sroll/addvehiclescreen.dart'; // La pantalla para añadir vehículos
-import '../../screens/principal_sroll/VehicleDetailScreen.dart'; // La pantalla de detalles del vehículo
+import '../../screens/principal_sroll/vehicle_detail_screen.dart'; // La pantalla de detalles del vehículo
 
 class GarageScreen extends StatefulWidget {
   const GarageScreen({Key? key}) : super(key: key);
@@ -14,87 +18,192 @@ class GarageScreen extends StatefulWidget {
 }
 
 class _GarageScreenState extends State<GarageScreen> {
-  final int _maxGarageSlots = 3; // Define el número máximo de plazas de garaje
+  // Define el número máximo de plazas de garaje
+  final int _maxGarageSlots = 3;
   User? _currentUser; // El usuario autenticado
+
+  // Usamos _currentIndex para el CustomBottomNavigationBar.
+  // Ajusta el índice inicial si tu "Garaje" no es el tercero (índice 2).
+  int _currentIndex = 2; // Índice para la barra de navegación: 'Garage'
+
 
   @override
   void initState() {
     super.initState();
     _currentUser = FirebaseAuth.instance.currentUser;
+
+    // Escuchar cambios de autenticación para actualizar la UI si el usuario cierra sesión
+    FirebaseAuth.instance.authStateChanges().listen((User? user) {
+      if (user == null && _currentUser != null) {
+        // El usuario ha cerrado sesión, redirige a la pantalla de login
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed(loginScreenRoute);
+        }
+      }
+      setState(() {
+        _currentUser = user;
+      });
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    // Si no hay usuario logueado, muestra un mensaje o redirige
     if (_currentUser == null) {
-      // Si no hay usuario logueado, muestra un mensaje o redirige
+      // Se recomienda redirigir directamente en authStateChanges para evitar flashes
       return const Scaffold(
         backgroundColor: Color(0xFF1A0033),
-        appBar: AppBar(
-          title: Text('Mi Garaje', style: TextStyle(color: Colors.white)),
-          backgroundColor: Color(0xFF1A0033),
-          iconTheme: IconThemeData(color: Colors.white),
-        ),
         body: Center(
-          child: Text(
-            'Inicia sesión para ver tu garaje.',
-            style: TextStyle(color: Colors.white70, fontSize: 18),
-          ),
+          child: CircularProgressIndicator(color: Colors.purpleAccent),
         ),
       );
     }
 
+    final userId = _currentUser!.uid;
+    final userEmail = _currentUser!.email ?? 'Usuario desconocido';
+
     return Scaffold(
-      backgroundColor: const Color(0xFF1A0033),
+      backgroundColor: Colors.black, // Fondo principal oscuro
       appBar: AppBar(
-        title: const Text('Mi Garaje', style: TextStyle(color: Colors.white)),
-        backgroundColor: const Color(0xFF1A0033),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        // Escucha los vehículos del usuario actual, ordenados por fecha de añadido
-        stream:
-            FirebaseFirestore.instance
-                .collection('vehicles')
-                .where('userId', isEqualTo: _currentUser!.uid)
-                .orderBy(
-                  'addedAt',
-                  descending: true,
-                ) // Ordena para asignar las plazas consistentemente
-                .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: Colors.purpleAccent),
-            );
-          }
-          if (snapshot.hasError) {
-            print('Error loading vehicles: ${snapshot.error}');
-            return Center(
-              child: Text(
-                'Error al cargar vehículos: ${snapshot.error}',
-                style: const TextStyle(color: Colors.redAccent, fontSize: 16),
+        backgroundColor: Colors.transparent, // Transparente para que se vea el gradiente
+        elevation: 0,
+        title: const Text(
+          'Mi Garaje',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF1A0033),
+                Color.fromARGB(255, 60, 0, 100),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.settings, color: Colors.white),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ConfiguracionUser(), // Navegar a la pantalla de configuración
               ),
             );
-          }
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            // Si no hay vehículos, muestra solo los botones de añadir
-            return _buildGarageGrid(context, []);
-          }
+          },
+        ),
+        // No hay acciones en la appbar para subir coche, ya que usamos FAB
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const SizedBox(height: 40),
+            const Text(
+              'GARAGE',
+              style: TextStyle(
+                fontSize: 28,
+                color: Colors.purpleAccent,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              userEmail,
+              style: const TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 24),
+            // StreamBuilder para los vehículos del usuario
+            StreamBuilder<QuerySnapshot>(
+              // Escucha los vehículos del usuario actual, ordenados por fecha de añadido
+              stream: FirebaseFirestore.instance
+                  .collection('vehicles')
+                  .where('userId', isEqualTo: userId)
+                  .orderBy('addedAt', descending: true) // Ordena para asignar las plazas consistentemente
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: Colors.purpleAccent),
+                  );
+                }
+                if (snapshot.hasError) {
+                  print('Error al cargar vehículos: ${snapshot.error}');
+                  return Center(
+                    child: Text(
+                      'Error al cargar vehículos: ${snapshot.error}',
+                      style: const TextStyle(color: Colors.redAccent, fontSize: 16),
+                    ),
+                  );
+                }
 
-          // Convertir los documentos a VehicleModel
-          final List<VehicleModel> vehicles =
-              snapshot.data!.docs
-                  .map((doc) => VehicleModel.fromFirestore(doc))
-                  .toList();
+                // Convertir los documentos a VehicleModel
+                final List<VehicleModel> vehicles = snapshot.data!.docs
+                    .map((doc) => VehicleModel.fromFirestore(doc))
+                    .toList();
 
-          return _buildGarageGrid(context, vehicles);
+                // Construir la cuadrícula de garaje con los vehículos y las plazas vacías
+                return _buildGarageGrid(context, vehicles);
+              },
+            ),
+          ],
+        ),
+      ),
+      // Botón flotante para añadir un vehículo
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AddVehicleScreen()),
+          );
+        },
+        label: const Text('Vender Mi Vehículo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        icon: const Icon(Icons.add_business_outlined, size: 24), // Ícono de tienda/venta
+        backgroundColor: Colors.lightGreenAccent, // Un color que resalte mucho para la venta
+        foregroundColor: const Color(0xFF1A0033), // Color de texto oscuro para contraste
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.0),
+          side: const BorderSide(color: Colors.white, width: 2), // Borde blanco para mayor destaque
+        ),
+        elevation: 10, // Sombra para que flote más
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat, // Centra el botón abajo
+
+      // Integración del CustomBottomNavigationBar
+      bottomNavigationBar: CustomBottomNavigationBar(
+        currentIndex: _currentIndex, // Pasa el índice actual
+        onItemSelected: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+          // Aquí puedes agregar la lógica de navegación real a tus otras pantallas
+          // Ejemplo:
+          // if (index == 0) {
+          //   Navigator.pushReplacementNamed(context, homeRoute);
+          // } else if (index == 1) {
+          //   Navigator.pushReplacementNamed(context, searchRoute);
+          // } else if (index == 3) {
+          //   Navigator.pushReplacementNamed(context, notificationsRoute);
+          // } else if (index == 4) {
+          //   Navigator.pushReplacementNamed(context, profileRoute);
+          // }
         },
       ),
     );
   }
 
+  // Widget para construir la cuadrícula del garaje (vehículos + plazas vacías)
   Widget _buildGarageGrid(BuildContext context, List<VehicleModel> vehicles) {
     return GridView.builder(
+      shrinkWrap: true, // Importante para que el GridView no ocupe todo el espacio y permita el SingleChildScrollView
+      physics: const NeverScrollableScrollPhysics(), // Deshabilita el scroll interno del GridView
       padding: const EdgeInsets.all(16.0),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2, // 2 columnas por fila
@@ -121,58 +230,110 @@ class _GarageScreenState extends State<GarageScreen> {
     );
   }
 
+  // Widget para la tarjeta de un vehículo en el garaje
   Widget _buildVehicleCard(BuildContext context, VehicleModel vehicle) {
-    // Aquí puedes usar un PostCard simplificado o un widget personalizado
-    // para mostrar el vehículo en la plaza de garaje.
-    // Usaremos un PostCard para reutilizar tu componente, pero simplificado.
-
-    // Preparar el texto del precio y estado para el PostCard
-    String displayPrice = 'No disponible';
+    // Preparar el texto del precio y estado para la tarjeta
+    String displayPrice = 'N/A';
     if (vehicle.currentStatus == 'En Venta' && vehicle.price != null) {
-      displayPrice =
-          '${vehicle.price!.toStringAsFixed(0)} ${vehicle.currency ?? ''}';
+      displayPrice = '${vehicle.price!.toStringAsFixed(0)} €'; // Asume euros, ajusta si es necesario
     } else if (vehicle.currentStatus == 'Escucha Ofertas') {
       displayPrice = 'Escucha Ofertas';
     } else {
-      displayPrice =
-          vehicle.currentStatus; // Mostrar el estado si no es "En Venta"
+      displayPrice = vehicle.currentStatus; // Mostrar el estado si no es "En Venta"
     }
 
-    return GestureDetector(
-      onTap: () {
-        // Al tocar el vehículo, navega a la pantalla de detalles
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => VehicleDetailsScreen(vehicle: vehicle),
-          ),
-        );
-      },
-      child: PostCard(
-        // Propiedades de PostCard (simplificadas para la vista de garaje)
-        postId: vehicle.id,
-        username: vehicle.userId, // O el nombre real del propietario
-        imageUrl: vehicle.mainImageUrl,
-        description: '${vehicle.brand} ${vehicle.model}', // Descripción corta
-        likes: 0,
-        comments: 0,
-        shares: 0,
-        isLiked: false, // Acciones no son relevantes aquí
-        onLike: () {},
-        onComment: () {},
-        onShare: null, // Deshabilitar acciones
-        // Mostrar solo lo relevante para la plaza del garaje
-        showUsername: false, // No necesitamos el avatar/nombre de usuario aquí
-        showActions:
-            false, // No necesitamos botones de like/comentario/compartir aquí
-        showPrice: true, // Queremos mostrar el precio
-        price: displayPrice,
-        showStatus: true, // Queremos mostrar el estado
-        status: vehicle.currentStatus,
+    return Card(
+      color: Colors.grey[900], // Fondo oscuro para la tarjeta
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.0),
+      ),
+      elevation: 5,
+      child: InkWell(
+        onTap: () {
+          // Al tocar el vehículo, navega a la pantalla de detalles
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => VehicleDetailsScreen(vehicle: vehicle),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(12.0)),
+                child: Image.network(
+                  vehicle.mainImageUrl,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Center(
+                      child: CircularProgressIndicator(
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                                loadingProgress.expectedTotalBytes!
+                            : null,
+                        color: Colors.purpleAccent,
+                      ),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: Colors.grey[700],
+                      child: const Center(
+                        child: Icon(Icons.broken_image, color: Colors.white54, size: 50),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${vehicle.brand} ${vehicle.model}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    displayPrice,
+                    style: TextStyle(
+                      color: vehicle.currentStatus == 'Vendido' ? Colors.redAccent : Colors.lightGreenAccent,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Estado: ${vehicle.currentStatus}',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
+  // Widget para el botón de añadir vehículo en una plaza vacía
   Widget _buildAddVehicleButton(BuildContext context, int slotIndex) {
     return Card(
       color: const Color(0xFF1A0033),
@@ -193,11 +354,9 @@ class _GarageScreenState extends State<GarageScreen> {
             context,
             MaterialPageRoute(builder: (context) => const AddVehicleScreen()),
           );
-          // Opcional: Si necesitas hacer algo específico después de añadir,
-          // puedes usar await y verificar si el vehículo se añadió (ej. retornando true)
         },
         borderRadius: BorderRadius.circular(12.0),
-        child: const Column(
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.add_circle_outline, size: 60, color: Colors.white70),

@@ -135,7 +135,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       if (chatDocSnapshot.connectionState == ConnectionState.active &&
                           chatDocSnapshot.hasData && chatDocSnapshot.data!.exists) {
                         chat = ChatModel.fromFirestore(chatDocSnapshot.data!);
-                        lastMessageContent = chat!.lastMessageContent.isEmpty ? 'Toca para iniciar una conversación.' : chat.lastMessageContent;
+                        lastMessageContent = chat.lastMessageContent.isEmpty ? 'Toca para iniciar una conversación.' : chat.lastMessageContent;
                         unreadCount = chat.unreadCounts[currentUser!.uid] ?? 0;
                         if (unreadCount > 0) {
                           subtitleColor = Colors.lightBlueAccent;

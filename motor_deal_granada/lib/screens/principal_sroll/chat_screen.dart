@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart'; // Importa Provider
-import '../../models/message_model.dart';
-import '../../models/chat_model.dart';
 import 'chat_edit.dart'; // Importa la pantalla de edición y el ChatThemeProvider
 
 class ChatScreen extends StatefulWidget {

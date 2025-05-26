@@ -237,7 +237,7 @@ class _PublicGarageScreenState extends State<PublicGarageScreen> {
 
                       // Otros botones para el dueño del perfil (si fueran relevantes)
                       if (isMyOwnProfile)
-                         SizedBox(
+                        SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
                             onPressed: () {

@@ -1,20 +1,28 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_storage/firebase_storage.dart'; // Importa Firebase Storage
 
 import '../../models/vehicle_model.dart';
 import 'Posts.dart'; // Importa tu PostCard y quizás la lógica de manejo de posts
 
-class VehicleDetailScreen extends StatefulWidget {
-  final String vehicleId;
+class VehicleDetailsScreen extends StatefulWidget {
+  // Cambiamos el constructor para recibir el VehicleModel
+  // El vehicleId es opcional si ya tenemos el objeto VehicleModel
+  final VehicleModel vehicle; // El vehículo que se pasa desde la pantalla anterior
+  final String? vehicleId; // Opcional: para recargar si es necesario
 
-  const VehicleDetailScreen({super.key, required this.vehicleId});
+  const VehicleDetailsScreen({
+    super.key,
+    required this.vehicle, // Ahora se requiere el objeto VehicleModel
+    this.vehicleId, // El vehicleId ahora es opcional
+  });
 
   @override
-  State<VehicleDetailScreen> createState() => _VehicleDetailScreenState();
+  State<VehicleDetailsScreen> createState() => _VehicleDetailsScreenState();
 }
 
-class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
+class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
   final User? currentUser = FirebaseAuth.instance.currentUser;
 
   Future<void> _handleLike(String postId) async {
@@ -26,6 +34,11 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
   void _handleComment(String postId) {
     // Implementa la navegación a la pantalla de comentarios
     print('Comentario manejado para el post $postId');
+    // Ejemplo de navegación a una pantalla de comentarios:
+    // Navigator.push(
+    //   context,
+    //   MaterialPageRoute(builder: (context) => CommentsScreen(postId: postId)),
+    // );
   }
 
   void _handleShare(String postId) {
@@ -73,9 +86,10 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
         ],
       ),
       body: StreamBuilder<DocumentSnapshot>(
+        // Usamos el vehicleId si lo pasamos, si no, el ID del objeto VehicleModel
         stream: FirebaseFirestore.instance
             .collection('vehicles')
-            .doc(widget.vehicleId)
+            .doc(widget.vehicleId ?? widget.vehicle.id) // Usa widget.vehicleId si existe, sino widget.vehicle.id
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -107,16 +121,26 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Sección de Detalles del Vehículo
-                Container(
-                  width: double.infinity,
-                  height: 250, // Altura de la imagen principal
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: NetworkImage(vehicle.mainImageUrl),
-                      fit: BoxFit.cover,
+                if (vehicle.mainImageUrl.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    height: 250, // Altura de la imagen principal
+                    decoration: BoxDecoration(
+                      image: DecorationImage(
+                        image: NetworkImage(vehicle.mainImageUrl), // Usar ! aquí para asegurar que no es nulo
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  )
+                else
+                  Container( // Placeholder si no hay imagen
+                    width: double.infinity,
+                    height: 250,
+                    color: Colors.grey[800],
+                    child: const Center(
+                      child: Icon(Icons.directions_car, size: 100, color: Colors.white54),
                     ),
                   ),
-                ),
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -201,7 +225,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                 StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
                       .collection('posts')
-                      .where('vehicleId', isEqualTo: widget.vehicleId)
+                      .where('vehicleId', isEqualTo: vehicle.id) // Usamos vehicle.id aquí
                       .orderBy('timestamp', descending: true)
                       .snapshots(),
                   builder: (context, postsSnapshot) {
@@ -245,21 +269,20 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                         // Asume que tu PostCard tiene los campos necesarios
                         // Y que necesitas el UID del usuario para determinar si ha dado like
                         // (esto es un placeholder, deberías adaptar PostCard para manejar likes dinámicamente)
-                        final String userId = FirebaseAuth.instance.currentUser!.uid;
+                        final String? userId = FirebaseAuth.instance.currentUser?.uid; // Puede ser nulo
 
                         return PostCard(
                           postId: postDoc.id,
                           username: postData['username'] ?? 'Usuario Desconocido',
                           imageUrl: postData['imageUrl'] ?? 'https://via.placeholder.com/150',
-                          likes: postData['likesCount'] ?? 0, // Asegúrate de que tu modelo de Post tenga likesCount
-                          comments: postData['commentsCount'] ?? 0, // Asegúrate de que tu modelo de Post tenga commentsCount
-                          shares: postData['sharesCount'] ?? 0, // Asegúrate de que tu modelo de Post tenga sharesCount
+                          likes: postData['likesCount'] ?? 0,
+                          comments: postData['commentsCount'] ?? 0,
+                          shares: postData['sharesCount'] ?? 0,
                           description: postData['description'] ?? '',
-                          isLiked: (postData['likedBy'] as List<dynamic>?)?.contains(userId) ?? false, // Lógica para saber si el usuario le ha dado like
+                          isLiked: (postData['likedBy'] as List<dynamic>?)?.contains(userId) ?? false,
                           onLike: () => _handleLike(postDoc.id),
                           onComment: () => _handleComment(postDoc.id),
                           onShare: () => _handleShare(postDoc.id),
-                          // No mostramos precio o estado del vehículo en la PostCard aquí
                           showPrice: false,
                           status: '',
                         );
@@ -315,7 +338,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
       // 1. Eliminar todos los posts asociados al vehículo
       final postsQuery = await FirebaseFirestore.instance
           .collection('posts')
-          .where('vehicleId', isEqualTo: widget.vehicleId)
+          .where('vehicleId', isEqualTo: widget.vehicle.id) // Usar widget.vehicle.id
           .get();
 
       for (final doc in postsQuery.docs) {
@@ -323,16 +346,21 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
       }
 
       // 2. Eliminar la imagen principal del vehículo de Storage
-      // Asume que la URL de la imagen principal contiene la ruta de storage
-      // Necesitarás parsear la URL para obtener la referencia de Storage
-      final vehicleRef = FirebaseStorage.instance
-          .refFromURL(vehicle.mainImageUrl); // Assuming 'vehicle' is available here
-      await vehicleRef.delete();
+      // Solo intenta eliminar si hay una URL de imagen válida
+      if (widget.vehicle.mainImageUrl.isNotEmpty) {
+        try {
+          final vehicleRef = FirebaseStorage.instance.refFromURL(widget.vehicle.mainImageUrl); // Usar widget.vehicle.mainImageUrl!
+          await vehicleRef.delete();
+        } catch (e) {
+          print('Error al eliminar imagen de Storage: $e');
+          // No bloqueamos la eliminación del vehículo si falla la imagen
+        }
+      }
 
       // 3. Eliminar el documento del vehículo de Firestore
       await FirebaseFirestore.instance
           .collection('vehicles')
-          .doc(widget.vehicleId)
+          .doc(widget.vehicle.id) // Usar widget.vehicle.id
           .delete();
 
       // 4. Decrementar garageSlotsUsed en el perfil del usuario
@@ -346,12 +374,18 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vehículo y sus posts eliminados con éxito.')),
       );
-      Navigator.of(context).pop(); // Regresar a la pantalla anterior (GarageScreen)
+      // Regresar a la pantalla anterior (GarageScreen)
+      // Asegúrate de que el pop se haga DESPUÉS de que todo se haya eliminado con éxito
+      if (mounted) { // Comprueba si el widget sigue en el árbol antes de navegar
+        Navigator.of(context).pop();
+      }
     } catch (e) {
       print('Error al eliminar vehículo: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al eliminar vehículo: $e')),
-      );
+      if (mounted) { // Comprueba si el widget sigue en el árbol antes de mostrar el SnackBar
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al eliminar vehículo: $e')),
+        );
+      }
     }
   }
 }

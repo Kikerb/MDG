@@ -1,18 +1,17 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:motor_deal_granada/screens/principal_sroll/Noticias_screen.dart';
-import 'package:motor_deal_granada/screens/principal_sroll/chat_screen.dart';
 import 'package:provider/provider.dart';
-import 'screens/principal_sroll/chat_edit.dart';
+
 import 'firebase_options.dart';
 import 'screens/auth/auth_screen.dart';
 import 'screens/login/login_screen.dart';
-import 'screens/signUp/signUp_screen.dart'; 
-import 'screens/principal_sroll/Scroll.dart'; 
-import 'screens/splash/splash_screen.dart';
-import 'screens/principal_sroll/garage.dart'; 
-
-import 'screens/principal_sroll/buscar.dart'; 
+import 'screens/principal_sroll/Scroll.dart';
+import 'screens/principal_sroll/buscar.dart';
+import 'screens/principal_sroll/chat_edit.dart';
+import 'screens/principal_sroll/private_garage.dart';
+import 'screens/signUp/signUp_screen.dart';
+import 'screens/splash/splash_screen.dart'; 
 
 // Definimos constantes para las rutas de las pantallas para facilitar la navegación y evitar errores tipográficos.
 const String splashScreenRoute = '/splash';
@@ -20,7 +19,7 @@ const String authScreenRoute = '/auth';
 const String loginScreenRoute = '/login';
 const String signUpScreenRoute = '/signUp'; 
 const String scrollScreenRoute = '/scroll'; 
-const String garageScreenRoute = '/garage';
+const String garageScreenRoute = '/private_garage';
 const String buscarScreenRoute = '/buscar';
 const String noticiasScreenRoute = '/noticias';
 const String chatScreenRoute = '/noticias';
@@ -57,9 +56,9 @@ class MyApp extends StatelessWidget {
         splashScreenRoute: (context) => const SplashScreen(),
         authScreenRoute: (context) => const AuthScreen(),
         loginScreenRoute: (context) => const LoginScreen(),
-        signUpScreenRoute: (context) => const SignUpScreen(), 
-        scrollScreenRoute: (context) => const ScrollScreen(), 
-        garageScreenRoute: (context) => const GarageScreen(),
+        signUpScreenRoute: (context) => const SignUpScreen(),
+        scrollScreenRoute: (context) => const ScrollScreen(),
+        garageScreenRoute: (context) => const PrivateGarageScreen(),
         buscarScreenRoute: (context) => const BuscarScreen(),
         noticiasScreenRoute: (context) => const NoticiasScreen(),
 
