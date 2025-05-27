@@ -3,7 +3,20 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/chat_model.dart';
 import 'chat_screen.dart';
-import 'create_group.dart'; // ¡Importa la nueva pantalla de creación de grupo!
+import 'create_group.dart';
+
+// Extensión para List para simular .firstWhereOrNull
+// Flutter 3.10+ ya lo tiene, pero si usas una versión anterior, esto es útil.
+extension ListExtension<T> on List<T> {
+  T? firstWhereOrNull(bool Function(T element) test) {
+    for (var element in this) {
+      if (test(element)) {
+        return element;
+      }
+    }
+    return null;
+  }
+}
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -39,9 +52,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
         ),
         centerTitle: true,
         actions: [
-          // Nuevo botón para crear grupo
           IconButton(
-            icon: const Icon(Icons.group_add, color: Colors.white), // Icono de grupo con un "+"
+            icon: const Icon(Icons.group_add, color: Colors.white),
             onPressed: () {
               Navigator.push(
                 context,
@@ -51,45 +63,32 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ),
         ],
       ),
-      body: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance.collection('users').doc(currentUser!.uid).snapshots(),
-        builder: (context, userSnapshot) {
-          if (userSnapshot.connectionState == ConnectionState.waiting) {
+      body: StreamBuilder<QuerySnapshot>(
+        // Escucha todos los documentos en la colección 'messages'
+        // donde el array 'participants' contiene el UID del usuario actual.
+        // Esto incluirá tanto chats individuales como grupales que el usuario sea miembro.
+        stream: FirebaseFirestore.instance
+            .collection('messages')
+            .where('participants', arrayContains: currentUser!.uid)
+            .orderBy('lastMessageTimestamp', descending: true) // Ordenar por actividad reciente
+            .snapshots(),
+        builder: (context, chatListSnapshot) {
+          if (chatListSnapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator(color: Colors.purpleAccent));
           }
-          if (userSnapshot.hasError) {
+          if (chatListSnapshot.hasError) {
+            print('Error al cargar chats: ${chatListSnapshot.error}');
             return Center(
-              child: Text('Error al cargar datos del usuario: ${userSnapshot.error}',
+              child: Text('Error al cargar chats: ${chatListSnapshot.error}',
                   style: const TextStyle(color: Colors.red)),
             );
           }
-          if (!userSnapshot.hasData || !userSnapshot.data!.exists) {
-            return const Center(
-              child: Text('Datos de usuario no encontrados.', style: TextStyle(color: Colors.white)),
-            );
-          }
-
-          final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
-          final List<String> following = List<String>.from(userData?['following'] ?? []);
-          final List<String> followers = List<String>.from(userData?['followers'] ?? []);
-
-          final Set<String> relevantUserIds = {};
-          final Set<String> followingSet = following.toSet();
-          final Set<String> followersSet = followers.toSet();
-
-          final Set<String> mutualFollowers = followingSet.intersection(followersSet);
-
-          for (var id in mutualFollowers) {
-            relevantUserIds.add(id);
-          }
-          relevantUserIds.remove(currentUser!.uid);
-
-          if (relevantUserIds.isEmpty) {
+          if (!chatListSnapshot.hasData || chatListSnapshot.data!.docs.isEmpty) {
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(16.0),
                 child: Text(
-                  'No tienes chats activos. Solo puedes chatear con usuarios que te siguen y tú también sigues.',
+                  'No tienes chats activos. Crea un nuevo grupo o chatea con usuarios que te siguen y tú también sigues.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.white70, fontSize: 16),
                 ),
@@ -97,105 +96,159 @@ class _ChatListScreenState extends State<ChatListScreen> {
             );
           }
 
-          final List<String> uniqueRelevantUserIds = relevantUserIds.toList();
+          // Filtra los chats individuales (por si hay duplicados o lógica antigua)
+          // y procesa tanto chats individuales como grupales.
+          final List<ChatModel> chats = chatListSnapshot.data!.docs.map((doc) {
+            return ChatModel.fromFirestore(doc);
+          }).toList();
+
+          // Aquí podrías ordenar los chats si quieres alguna prioridad (ej. no leídos primero)
+          // chats.sort((a, b) => b.lastMessageTimestamp.compareTo(a.lastMessageTimestamp)); // Ya ordenado por la query
 
           return ListView.builder(
-            itemCount: uniqueRelevantUserIds.length,
+            itemCount: chats.length,
             itemBuilder: (context, index) {
-              final String otherUserId = uniqueRelevantUserIds[index];
+              final chat = chats[index];
+              String displayName;
+              String displayImageUrl;
+              String targetUserId = ''; // Solo relevante para chats individuales
 
-              return FutureBuilder<DocumentSnapshot>(
-                future: FirebaseFirestore.instance.collection('users').doc(otherUserId).get(),
-                builder: (context, otherUserSnapshot) {
-                  String otherUserName = 'Usuario Desconocido';
-                  String otherUserEmail = '';
-                  String otherUserProfileImageUrl = 'https://i.imgur.com/BoN9kdC.png';
+              // Determinar si es un chat de grupo o un chat individual
+              if (chat.isGroupChat) {
+                // Es un chat de grupo
+                displayName = chat.groupName ?? 'Grupo Desconocido';
+                displayImageUrl = chat.groupImageUrl ?? 'https://i.imgur.com/BoN9kdC.png'; // Imagen por defecto para grupos
+                // No hay otherUserId para grupos, pasaremos el chatId como tal a la pantalla de chat
+              } else {
+                // Es un chat individual
+                // Encontrar el UID del otro participante
+                targetUserId = chat.participants.firstWhere(
+                  (uid) => uid != currentUser!.uid,
+                  orElse: () => '', // Si por alguna razón no se encuentra, default a vacío
+                );
 
-                  if (otherUserSnapshot.connectionState == ConnectionState.done &&
-                      otherUserSnapshot.hasData && otherUserSnapshot.data!.exists) {
-                    final otherUserData = otherUserSnapshot.data!.data() as Map<String, dynamic>;
-                    otherUserName = otherUserData['username'] ?? otherUserData['email'] ?? 'Usuario Desconocido';
-                    otherUserEmail = otherUserData['email'] ?? '';
-                    otherUserProfileImageUrl = otherUserData['profileImageUrl'] ?? 'https://i.imgur.com/BoN9kdC.png';
-                  } else if (otherUserSnapshot.hasError) {
-                    print('Error fetching other user data: ${otherUserSnapshot.error}');
-                  }
+                // Si no hay otro usuario, no se debe mostrar este chat
+                if (targetUserId.isEmpty) {
+                  return const SizedBox.shrink(); // No muestra este elemento
+                }
 
-                  List<String> sortedIds = [currentUser!.uid, otherUserId]..sort();
-                  final String chatId = 'chat_${sortedIds[0]}_${sortedIds[1]}';
+                // Usamos un FutureBuilder para obtener los detalles del otro usuario
+                return FutureBuilder<DocumentSnapshot>(
+                  future: FirebaseFirestore.instance.collection('users').doc(targetUserId).get(),
+                  builder: (context, otherUserSnapshot) {
+                    String otherUserName = 'Usuario Desconocido';
+                    String otherUserEmail = '';
+                    String otherUserProfileImageUrl = 'https://i.imgur.com/BoN9kdC.png';
 
-                  return StreamBuilder<DocumentSnapshot>(
-                    stream: FirebaseFirestore.instance.collection('messages').doc(chatId).snapshots(),
-                    builder: (context, chatDocSnapshot) {
-                      ChatModel? chat;
-                      String lastMessageContent = 'Toca para iniciar una conversación.';
-                      int unreadCount = 0;
-                      Color subtitleColor = Colors.white70;
+                    if (otherUserSnapshot.connectionState == ConnectionState.done &&
+                        otherUserSnapshot.hasData && otherUserSnapshot.data!.exists) {
+                      final otherUserData = otherUserSnapshot.data!.data() as Map<String, dynamic>;
+                      otherUserName = otherUserData['username'] ?? otherUserData['email'] ?? 'Usuario Desconocido';
+                      otherUserEmail = otherUserData['email'] ?? '';
+                      otherUserProfileImageUrl = otherUserData['profileImageUrl'] ?? 'https://i.imgur.com/BoN9kdC.png';
+                    }
 
-                      if (chatDocSnapshot.connectionState == ConnectionState.active &&
-                          chatDocSnapshot.hasData && chatDocSnapshot.data!.exists) {
-                        chat = ChatModel.fromFirestore(chatDocSnapshot.data!);
-                        lastMessageContent = chat.lastMessageContent.isEmpty ? 'Toca para iniciar una conversación.' : chat.lastMessageContent;
-                        unreadCount = chat.unreadCounts[currentUser!.uid] ?? 0;
-                        if (unreadCount > 0) {
-                          subtitleColor = Colors.lightBlueAccent;
-                        }
-                      }
-
-                      return Card(
-                        color: Colors.grey[900],
-                        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundImage: NetworkImage(otherUserProfileImageUrl),
-                            radius: 25,
+                    // Ahora construye el ListTile para el chat individual
+                    return _buildChatListItem(
+                      chat: chat,
+                      displayName: otherUserName,
+                      displayImageUrl: otherUserProfileImageUrl,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ChatScreen(
+                              chatId: chat.id,
+                              otherUserId: targetUserId, // Pasa el UID del otro usuario para chat individual
+                              otherUserName: otherUserName,
+                              otherUserEmail: otherUserEmail,
+                              otherUserProfileImageUrl: otherUserProfileImageUrl,
+                            ),
                           ),
-                          title: Text(
-                            otherUserName,
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Text(
-                            lastMessageContent,
-                            style: TextStyle(color: subtitleColor, fontStyle: unreadCount > 0 ? FontStyle.italic : FontStyle.normal),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          trailing: unreadCount > 0
-                              ? Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.purpleAccent,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    unreadCount.toString(),
-                                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                                  ),
-                                )
-                              : null,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ChatScreen(
-                                  chatId: chatId,
-                                  otherUserId: otherUserId,
-                                  otherUserName: otherUserName,
-                                  otherUserEmail: otherUserEmail,
-                                  otherUserProfileImageUrl: otherUserProfileImageUrl,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    );
+                  },
+                );
+              }
+
+              // Si es un chat de grupo, o un chat individual donde no necesitamos el FutureBuilder (ya sabemos los datos)
+              return _buildChatListItem(
+                chat: chat,
+                displayName: displayName,
+                displayImageUrl: displayImageUrl,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ChatScreen(
+                        chatId: chat.id,
+                        // Para grupos, no hay 'otherUserId', pasamos el chatId como tal
+                        // En ChatScreen, deberás manejar si es un chat individual o grupal
+                        otherUserId: targetUserId, // Será vacío si es un grupo, pero lo pasamos para consistencia
+                        otherUserName: displayName, // Nombre del grupo
+                        otherUserEmail: '', // No aplica para grupos
+                        otherUserProfileImageUrl: displayImageUrl, // Imagen del grupo
+                      ),
+                    ),
                   );
                 },
               );
             },
           );
         },
+      ),
+    );
+  }
+
+  // Widget auxiliar para construir el ListTile común a ambos tipos de chat
+  Widget _buildChatListItem({
+    required ChatModel chat,
+    required String displayName,
+    required String displayImageUrl,
+    required VoidCallback onTap,
+  }) {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    String lastMessageContent = chat.lastMessageContent.isEmpty ? 'Toca para iniciar una conversación.' : chat.lastMessageContent;
+    int unreadCount = chat.unreadCounts[currentUser!.uid] ?? 0;
+    Color subtitleColor = Colors.white70;
+
+    if (unreadCount > 0) {
+      subtitleColor = Colors.lightBlueAccent;
+    }
+
+    return Card(
+      color: Colors.grey[900],
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundImage: NetworkImage(displayImageUrl),
+          radius: 25,
+        ),
+        title: Text(
+          displayName,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          lastMessageContent,
+          style: TextStyle(color: subtitleColor, fontStyle: unreadCount > 0 ? FontStyle.italic : FontStyle.normal),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: unreadCount > 0
+            ? Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.purpleAccent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  unreadCount.toString(),
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                ),
+              )
+            : null,
+        onTap: onTap,
       ),
     );
   }

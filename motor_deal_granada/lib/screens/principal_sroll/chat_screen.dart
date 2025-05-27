@@ -1,23 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:provider/provider.dart'; // Importa Provider
-import 'chat_edit.dart'; // Importa la pantalla de edición y el ChatThemeProvider
+import 'package:provider/provider.dart';
+import 'chat_edit.dart';
+import 'opciones_chat_salir.dart'; // Asegúrate de que esta ruta sea correcta
+// Asumiendo que tienes un ChatThemeProvider definido en alguna parte de tu proyecto
+// import 'package:your_app_name/providers/chat_theme_provider.dart'; // <--- Descomenta y ajusta si es necesario
+import 'chat_principal.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
-  final String otherUserId;
-  final String otherUserName;
-  final String otherUserEmail;
-  final String otherUserProfileImageUrl;
+  final String? otherUserId; // Será nulo/vacío si es un grupo
+  final String? otherUserName; // Puede ser el nombre del grupo o el nombre del otro usuario
+  final String? otherUserEmail; // Puede ser el email del otro usuario, no aplica para grupos
+  final String? otherUserProfileImageUrl; // Puede ser la URL de la imagen del grupo o del otro usuario
 
   const ChatScreen({
     super.key,
     required this.chatId,
-    required this.otherUserId,
-    required this.otherUserName,
-    required this.otherUserEmail,
-    required this.otherUserProfileImageUrl,
+    this.otherUserId,
+    this.otherUserName,
+    this.otherUserEmail,
+    this.otherUserProfileImageUrl,
   });
 
   @override
@@ -29,9 +33,14 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
+  // Variables para almacenar el nombre y la imagen que se mostrarán en la AppBar
+  String _chatDisplayName = 'Cargando...';
+  String _chatDisplayImageUrl = 'https://i.imgur.com/BoN9kdC.png'; // Imagen por defecto
+
   @override
   void initState() {
     super.initState();
+    _initializeChatDetails(); // Carga los detalles del chat al iniciar
     _markMessagesAsRead();
   }
 
@@ -42,21 +51,72 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
+  // Método para inicializar el nombre y la imagen del chat
+  Future<void> _initializeChatDetails() async {
+    try {
+      DocumentSnapshot chatDoc = await FirebaseFirestore.instance.collection('messages').doc(widget.chatId).get();
+
+      if (chatDoc.exists) {
+        final data = chatDoc.data() as Map<String, dynamic>;
+        bool isGroup = data['isGroupChat'] ?? false;
+
+        if (isGroup) {
+          // Si es un chat de grupo
+          setState(() {
+            _chatDisplayName = data['groupName'] ?? 'Grupo Desconocido';
+            _chatDisplayImageUrl = data['groupImageUrl'] ?? 'https://i.imgur.com/BoN9kdC.png';
+          });
+        } else {
+          // Si es un chat individual
+          // Usamos los datos pasados por widget si están disponibles, si no, los cargamos
+          String? displayUid = widget.otherUserId;
+          String? displayUserName = widget.otherUserName;
+          String? displayImageUrl = widget.otherUserProfileImageUrl;
+
+          // Si el UID del otro usuario es válido y no tenemos el nombre/imagen
+          if (displayUid != null && displayUid.isNotEmpty && (displayUserName == null || displayImageUrl == null)) {
+            DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(displayUid).get();
+            if (userDoc.exists) {
+              final userData = userDoc.data() as Map<String, dynamic>;
+              displayUserName = userData['username'] ?? userData['email'] ?? 'Usuario Desconocido';
+              displayImageUrl = userData['profileImageUrl'] ?? 'https://i.imgur.com/BoN9kdC.png';
+            }
+          }
+
+          setState(() {
+            _chatDisplayName = displayUserName ?? 'Usuario';
+            _chatDisplayImageUrl = displayImageUrl ?? 'https://i.imgur.com/BoN9kdC.png';
+          });
+        }
+      }
+    } catch (e) {
+      print('Error al cargar detalles del chat en ChatScreen: $e');
+      setState(() {
+        _chatDisplayName = 'Error';
+        _chatDisplayImageUrl = 'https://i.imgur.com/BoN9kdC.png';
+      });
+    }
+  }
+
   // Marca los mensajes como leídos y resetea el contador de no leídos
   Future<void> _markMessagesAsRead() async {
     if (currentUser == null) return;
 
-    // Reiniciar el contador de no leídos para el usuario actual en la cabecera del chat
-    // Usa `set` con `merge: true` para crear el documento si no existe, o actualizarlo
-    await FirebaseFirestore.instance.collection('messages').doc(widget.chatId).set(
-      {
-        'unreadCounts': {
-          currentUser!.uid: 0,
-        },
-        'participants': [currentUser!.uid, widget.otherUserId], // Asegúrate de que los participantes estén presentes
-      },
-      SetOptions(merge: true), // Esto es crucial para no sobrescribir el documento si ya existe
-    );
+    DocumentReference chatDocRef = FirebaseFirestore.instance.collection('messages').doc(widget.chatId);
+
+    DocumentSnapshot chatDoc = await chatDocRef.get();
+    if (chatDoc.exists) {
+      final data = chatDoc.data() as Map<String, dynamic>;
+      List<String> participants = List<String>.from(data['participants'] ?? []);
+
+      if (participants.contains(currentUser!.uid)) {
+        await chatDocRef.update(
+          {
+            'unreadCounts.${currentUser!.uid}': 0,
+          },
+        );
+      }
+    }
   }
 
   Future<void> _sendMessage() async {
@@ -76,40 +136,57 @@ class _ChatScreenState extends State<ChatScreen> {
     };
 
     try {
-      // 1. Asegurarse de que el documento de la cabecera del chat exista.
-      // Se utiliza `set` con `SetOptions(merge: true)` para crear el documento
-      // si no existe, o simplemente actualizarlo si ya lo hace, sin borrar otros campos.
-      await FirebaseFirestore.instance.collection('messages').doc(widget.chatId).set(
-        {
-          'participants': [currentUser!.uid, widget.otherUserId],
-          'lastMessageContent': messageContent,
-          'lastMessageTimestamp': FieldValue.serverTimestamp(),
-          'lastMessageSenderId': currentUser!.uid,
-          // Inicializar los contadores si el chat es nuevo, o actualizarlos
-          'unreadCounts': {
-            currentUser!.uid: 0, // El remitente siempre tiene 0 no leídos de lo que envía
-            widget.otherUserId: FieldValue.increment(1), // Incrementa para el receptor
-          }
-        },
-        SetOptions(merge: true), // Importante para no sobrescribir todo el documento
-      );
+      DocumentReference chatDocRef = FirebaseFirestore.instance.collection('messages').doc(widget.chatId);
 
-      // 2. Añadir el mensaje a la subcolección de mensajes
-      await FirebaseFirestore.instance
-          .collection('messages')
-          .doc(widget.chatId)
-          .collection('messages')
-          .add(messageData);
+      DocumentSnapshot chatDoc = await chatDocRef.get();
+      List<String> currentParticipants = [];
+      bool isGroupChat = false;
 
-      // Mueve el scroll al final de la lista de mensajes (después de enviar)
+      if (chatDoc.exists) {
+        final data = chatDoc.data() as Map<String, dynamic>;
+        currentParticipants = List<String>.from(data['participants'] ?? []);
+        isGroupChat = data['isGroupChat'] ?? false;
+      } else {
+        print("Advertencia: El documento de chat ${widget.chatId} no existe al enviar un mensaje.");
+        currentParticipants = (widget.otherUserId != null && widget.otherUserId!.isNotEmpty)
+            ? [currentUser!.uid, widget.otherUserId!]
+            : [currentUser!.uid];
+      }
+
+      Map<String, dynamic> updateData = {
+        'lastMessageContent': messageContent,
+        'lastMessageTimestamp': FieldValue.serverTimestamp(),
+        'lastMessageSenderId': currentUser!.uid,
+      };
+
+      Map<String, int> unreadCounts = {};
+      for (String participantId in currentParticipants) {
+        if (participantId != currentUser!.uid) {
+          unreadCounts[participantId] = (chatDoc.exists ? (chatDoc.get('unreadCounts.${participantId}') ?? 0) : 0) + 1;
+        } else {
+          unreadCounts[participantId] = 0;
+        }
+      }
+      updateData['unreadCounts'] = unreadCounts;
+
+      if (!isGroupChat && !chatDoc.exists) {
+        updateData['participants'] = currentParticipants;
+        updateData['isGroupChat'] = false;
+      }
+
+      await chatDocRef.set(updateData, SetOptions(merge: true));
+
+      await chatDocRef.collection('messages').add(messageData);
+
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
       });
-
     } catch (e) {
       print('Error al enviar mensaje: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -120,10 +197,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Obtén el proveedor de tema
+    // Asegúrate de que ChatThemeProvider esté correctamente importado y proporcionado
+    // Puedes tener algo como:
+    // `ChangeNotifierProvider(create: (_) => ChatThemeProvider(), child: MyApp())`
+    // en tu main.dart o en un nivel superior.
     final chatThemeProvider = Provider.of<ChatThemeProvider>(context);
 
-    // Widget para el fondo del chat
     Widget backgroundWidget;
     if (chatThemeProvider.chatBackground.startsWith('gradient_')) {
       Gradient gradient;
@@ -134,7 +213,7 @@ class _ChatScreenState extends State<ChatScreen> {
       } else if (chatThemeProvider.chatBackground == 'gradient_purple') {
         gradient = const LinearGradient(colors: [Color(0xFF4A148C), Color(0xFFAB47BC)], begin: Alignment.topCenter, end: Alignment.bottomCenter);
       } else {
-        gradient = const LinearGradient(colors: [Colors.black87, Colors.grey]); // Fallback para degradados
+        gradient = const LinearGradient(colors: [Colors.black87, Colors.grey]);
       }
       backgroundWidget = Container(
         decoration: BoxDecoration(gradient: gradient),
@@ -142,10 +221,9 @@ class _ChatScreenState extends State<ChatScreen> {
         height: double.infinity,
       );
     } else if (chatThemeProvider.chatBackground == 'default') {
-      backgroundWidget = Container(color: Colors.black); // Fondo negro por defecto
+      backgroundWidget = Container(color: Colors.black);
     } else {
-      // Aquí podrías añadir lógica para imágenes de fondo si las incluyes en chat_edit.dart
-      backgroundWidget = Container(color: Colors.black); // Fallback para otros tipos de fondo
+      backgroundWidget = Container(color: Colors.black);
     }
 
     return Scaffold(
@@ -154,37 +232,39 @@ class _ChatScreenState extends State<ChatScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            Navigator.pop(context);
+            Navigator.pop(context); // Esto simplemente vuelve a la pantalla anterior (la lista de chats)
           },
         ),
         title: Row(
           children: [
             CircleAvatar(
-              backgroundImage: NetworkImage(widget.otherUserProfileImageUrl),
+              backgroundImage: NetworkImage(_chatDisplayImageUrl),
               radius: 20,
             ),
             const SizedBox(width: 10),
-            Expanded( // Usa Expanded para que el texto no desborde
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.otherUserName,
+                    _chatDisplayName,
                     style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                    overflow: TextOverflow.ellipsis, // Para manejar nombres largos
-                  ),
-                  Text(
-                    widget.otherUserEmail,
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (widget.otherUserEmail != null && widget.otherUserEmail!.isNotEmpty && (widget.otherUserId != null && widget.otherUserId!.isNotEmpty))
+                    Text(
+                      widget.otherUserEmail!,
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                 ],
               ),
             ),
           ],
         ),
         actions: [
-          IconButton( // BOTÓN PARA IR A LA PANTALLA DE PERSONALIZACIÓN
+          // Botón para ir a la pantalla de personalización
+          IconButton(
             icon: const Icon(Icons.palette, color: Colors.white),
             onPressed: () {
               Navigator.push(
@@ -193,12 +273,33 @@ class _ChatScreenState extends State<ChatScreen> {
               );
             },
           ),
+          // Botón para ir a la pantalla de detalles del chat (información del grupo/usuario)
+          IconButton(
+            icon: const Icon(Icons.info_outline, color: Colors.white),
+            onPressed: () async {
+              // Obtener la información del chat para pasarla a ChatDetailsScreen
+              DocumentSnapshot chatDoc = await FirebaseFirestore.instance.collection('messages').doc(widget.chatId).get();
+              bool isGroup = (chatDoc.data() as Map<String, dynamic>)['isGroupChat'] ?? false;
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => Opciones_chat_salir( // Aquí se usa el nombre original que tenías
+                    chatId: widget.chatId,
+                    isGroupChat: isGroup,
+                    chatDisplayName: _chatDisplayName, // Usa la variable de estado ya cargada
+                    chatDisplayImageUrl: _chatDisplayImageUrl, // Usa la variable de estado ya cargada
+                  ),
+                ),
+              );
+            },
+          ),
         ],
       ),
-      body: Stack( // Usa un Stack para poner el fondo detrás de los mensajes
+      body: Stack(
         children: [
-          backgroundWidget, // Tu fondo aquí
-          Column( // El resto de tu contenido de chat
+          backgroundWidget,
+          Column(
             children: [
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
@@ -246,7 +347,6 @@ class _ChatScreenState extends State<ChatScreen> {
                             margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              // Aplica el color de burbuja guardado del ChatThemeProvider
                               color: isMe ? chatThemeProvider.chatBubbleColor : chatThemeProvider.chatOtherBubbleColor,
                               borderRadius: BorderRadius.only(
                                 topLeft: Radius.circular(isMe ? 12 : 0),
@@ -257,7 +357,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             ),
                             child: Text(
                               messageContent,
-                              style: TextStyle(color: chatThemeProvider.chatTextColor), // Aplica el color de texto
+                              style: TextStyle(color: chatThemeProvider.chatTextColor),
                             ),
                           ),
                         );

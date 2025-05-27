@@ -7,6 +7,10 @@ class ChatModel {
   final Timestamp lastMessageTimestamp; // Marca de tiempo del último mensaje
   final String lastMessageSenderId; // UID del remitente del último mensaje
   final Map<String, int> unreadCounts; // {UID1: count1, UID2: count2}
+  final bool isGroupChat;
+  final String? groupName;
+  final String? groupImageUrl;
+  
 
   ChatModel({
     required this.id,
@@ -15,6 +19,9 @@ class ChatModel {
     required this.lastMessageTimestamp,
     required this.lastMessageSenderId,
     required this.unreadCounts,
+    this.isGroupChat = false, // Por defecto es false si no se especifica
+    this.groupName,
+    this.groupImageUrl,
   });
 
   // Factory constructor para crear un ChatModel desde un DocumentSnapshot de Firestore
@@ -27,6 +34,9 @@ class ChatModel {
       lastMessageTimestamp: data['lastMessageTimestamp'] ?? Timestamp.now(),
       lastMessageSenderId: data['lastMessageSenderId'] ?? '',
       unreadCounts: Map<String, int>.from(data['unreadCounts'] ?? {}),
+      isGroupChat: data['isGroupChat'] ?? false, // Lee el campo isGroupChat
+      groupName: data['groupName'], // Lee el nombre del grupo
+      groupImageUrl: data['groupImageUrl'], // Lee la imagen del grupo
     );
   }
 
