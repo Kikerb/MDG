@@ -1,15 +1,15 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:motor_deal_granada/screens/principal_sroll/Noticias_screen.dart';
+import 'package:motor_deal_granada/screens/principal_sroll/noticias/Noticias_screen.dart';
 import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
 import 'screens/auth/auth_screen.dart';
 import 'screens/login/login_screen.dart';
 import 'screens/principal_sroll/Scroll.dart';
-import 'screens/principal_sroll/buscar.dart';
-import 'screens/principal_sroll/chat_edit.dart';
-import 'screens/principal_sroll/private_garage.dart';
+import 'screens/search/buscar.dart';
+import 'screens/principal_sroll/chat/chat_edit.dart';
+import 'screens/garage/private_garage.dart';
 import 'screens/signUp/signUp_screen.dart';
 import 'screens/splash/splash_screen.dart'; 
 

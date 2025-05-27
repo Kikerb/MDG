@@ -3,8 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_storage/firebase_storage.dart'; // Importa Firebase Storage
 
-import '../../models/vehicle_model.dart';
-import 'Posts.dart'; // Importa tu PostCard y quizás la lógica de manejo de posts
+import '../../../models/vehicle_model.dart';
+import '../../principal_sroll/post/Posts.dart'; // Importa tu PostCard y quizás la lógica de manejo de posts
 
 class VehicleDetailsScreen extends StatefulWidget {
   // Cambiamos el constructor para recibir el VehicleModel

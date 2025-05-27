@@ -4,13 +4,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:motor_deal_granada/screens/principal_sroll/Posts.dart'; // Asegúrate de que esta ruta sea correcta para tu PostCard
+import 'package:motor_deal_granada/screens/principal_sroll/post/Posts.dart'; // Asegúrate de que esta ruta sea correcta para tu PostCard
 import 'package:motor_deal_granada/widgets/bottom_navigation_bar.dart'; // Importa tu barra de navegación
 import 'package:motor_deal_granada/main.dart'; // Importa main.dart para las rutas nombradas (asumiendo que tienes rutas nombradas como loginRoute)
 
 // Asegúrate de importar tus pantallas de configuración y subir coche
-import 'package:motor_deal_granada/screens/principal_sroll/ConfiguracionUser.dart'; // Ajusta la ruta si es necesario
-import 'package:motor_deal_granada/screens/principal_sroll/garage.dart'; // Ajusta la ruta si es necesario
+import 'package:motor_deal_granada/screens/setings/ConfiguracionUser.dart'; // Ajusta la ruta si es necesario
+import 'package:motor_deal_granada/screens/garage/garage.dart'; // Ajusta la ruta si es necesario
 
 
 class PrivateGarageScreen extends StatefulWidget {

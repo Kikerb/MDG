@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart'; // Para abrir URLs, útil si pones enlaces de ayuda
 
-import '../screens/principal_sroll/EditProfileScreen.dart';
-import '../screens/principal_sroll/change_email_screen.dart';
-import '../screens/principal_sroll/change_password_screen.dart';
+import '../screens/setings/EditProfileScreen.dart';
+import '../screens/setings/change_email_screen.dart';
+import '../screens/setings/change_password_screen.dart';
 
 
 class AccountSettingsBottomSheet extends StatelessWidget {

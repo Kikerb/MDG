@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 // Importaciones corregidas según tu estructura de carpetas
-import 'Posts.dart'; // Correcto, ya que Posts.dart está en el mismo directorio
+import 'post/Posts.dart'; // Correcto, ya que Posts.dart está en el mismo directorio
 import '../../main.dart'; // Correcto
-import 'CommentsScreen.dart'; // Correcto
-import 'NotificationsScreen.dart'; // Correcto
+import 'post/CommentsScreen.dart'; // Correcto
+import 'notificaciones/NotificationsScreen.dart'; // Correcto
 import '../../widgets/bottom_navigation_bar.dart'; // Correcto
-import 'chat_principal.dart'; // Correcto
+import 'chat/chat_principal.dart'; // Correcto
 
 class ScrollScreen extends StatefulWidget {
   const ScrollScreen({super.key});

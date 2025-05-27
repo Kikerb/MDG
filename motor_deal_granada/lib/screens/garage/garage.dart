@@ -5,10 +5,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../main.dart'; // Importa main.dart para las rutas nombradas (asumiendo que tienes rutas nombradas como loginRoute)
 import '../../widgets/bottom_navigation_bar.dart'; // Importa tu barra de navegación
 
-import '../../screens/principal_sroll/ConfiguracionUser.dart'; // Ajusta la ruta si es necesario
+import '../setings/ConfiguracionUser.dart'; // Ajusta la ruta si es necesario
 import '../../models/vehicle_model.dart'; // Ajusta la ruta a tu VehicleModel
-import '../../screens/principal_sroll/addvehiclescreen.dart'; // La pantalla para añadir vehículos
-import '../../screens/principal_sroll/vehicle_detail_screen.dart'; // La pantalla de detalles del vehículo
+import 'vehicle/addvehiclescreen.dart'; // La pantalla para añadir vehículos
+import 'vehicle/vehicle_detail_screen.dart'; // La pantalla de detalles del vehículo
 
 class GarageScreen extends StatefulWidget {
   const GarageScreen({Key? key}) : super(key: key);

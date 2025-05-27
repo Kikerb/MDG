@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io'; // Para trabajar con archivos File
 import 'package:geolocator/geolocator.dart'; // Opcional para GeoPoint
-import '../../models/vehicle_model.dart';
+import '../../../models/vehicle_model.dart';
 
 class AddVehicleScreen extends StatefulWidget {
   const AddVehicleScreen({Key? key}) : super(key: key);

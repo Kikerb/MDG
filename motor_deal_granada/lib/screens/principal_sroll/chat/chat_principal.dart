@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../models/chat_model.dart';
+import '../../../models/chat_model.dart';
 import 'chat_screen.dart';
 import 'create_group.dart';
 

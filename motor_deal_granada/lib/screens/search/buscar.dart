@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:motor_deal_granada/screens/principal_sroll/public_garage_screen.dart';
+import 'package:motor_deal_granada/screens/garage/public_garage_screen.dart';
 
 import '../../main.dart'; // Asegúrate de que estas rutas sean correctas
 

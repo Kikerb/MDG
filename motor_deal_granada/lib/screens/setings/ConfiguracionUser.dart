@@ -5,7 +5,7 @@ import 'package:url_launcher/url_launcher.dart'; // Para abrir enlaces externos
 import '../../widgets/account_settings_bottom_sheet.dart';
 
 // Importa las nuevas pantallas para las otras secciones
-import 'favorite_vehicles_screen.dart'; // Ejemplo de pantalla de preferencias
+import '../garage/favorite_vehicles_screen.dart'; // Ejemplo de pantalla de preferencias
 import 'interest_categories_screen.dart';
 import 'notification_settings_screen.dart';
 import 'privacy_settings_screen.dart';
