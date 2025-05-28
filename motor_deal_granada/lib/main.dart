@@ -9,7 +9,7 @@ import 'screens/login/login_screen.dart';
 import 'screens/principal_sroll/Scroll.dart';
 import 'screens/search/buscar.dart';
 import 'screens/principal_sroll/chat/chat_edit.dart';
-import 'screens/garage/private_garage.dart';
+import 'screens/garage/garage.dart';
 import 'screens/signUp/signUp_screen.dart';
 import 'screens/splash/splash_screen.dart'; 
 
@@ -19,7 +19,7 @@ const String authScreenRoute = '/auth';
 const String loginScreenRoute = '/login';
 const String signUpScreenRoute = '/signUp'; 
 const String scrollScreenRoute = '/scroll'; 
-const String garageScreenRoute = '/private_garage';
+const String garageScreenRoute = '/garage';
 const String buscarScreenRoute = '/buscar';
 const String noticiasScreenRoute = '/noticias';
 const String chatScreenRoute = '/noticias';
@@ -58,7 +58,7 @@ class MyApp extends StatelessWidget {
         loginScreenRoute: (context) => const LoginScreen(),
         signUpScreenRoute: (context) => const SignUpScreen(),
         scrollScreenRoute: (context) => const ScrollScreen(),
-        garageScreenRoute: (context) => const PrivateGarageScreen(),
+        garageScreenRoute: (context) => const GarageScreen(),
         buscarScreenRoute: (context) => const BuscarScreen(),
         noticiasScreenRoute: (context) => const NoticiasScreen(),
 
