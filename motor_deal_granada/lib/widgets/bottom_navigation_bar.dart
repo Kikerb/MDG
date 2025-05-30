@@ -14,9 +14,9 @@ class CustomBottomNavigationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BottomNavigationBar(
-      backgroundColor: const Color(0xFF1A0033), // Fondo de la barra púrpura oscuro
-      selectedItemColor: Colors.purpleAccent, // Color del icono seleccionado
-      unselectedItemColor: Colors.white, // Color del icono no seleccionado
+      backgroundColor: Colors.black, // Fondo de la barra negro
+      selectedItemColor: Colors.purpleAccent, // Color del icono seleccionado (morado)
+      unselectedItemColor: Colors.white, // Color del icono no seleccionado (blanco)
       currentIndex: currentIndex, // Usa el currentIndex pasado como parámetro
       onTap: (index) {
         // Ejecuta el callback proporcionado por el padre
@@ -26,21 +26,32 @@ class CustomBottomNavigationBar extends StatelessWidget {
         switch (index) {
           case 0:
             // Inicio
-            // Solo navega si no estamos ya en esta pantalla
             if (ModalRoute.of(context)?.settings.name != scrollScreenRoute) {
               Navigator.of(context).pushReplacementNamed(scrollScreenRoute);
             }
             break;
           case 1:
-            // Garaje
-            // Solo navega si no estamos ya en esta pantalla
+            // Buscar
             if (ModalRoute.of(context)?.settings.name != buscarScreenRoute) {
               Navigator.of(context).pushReplacementNamed(buscarScreenRoute);
             }
             break;
           case 2:
-            // Buscar
-            // Solo navega si no estamos ya en esta pantalla
+            // Publicar (el nuevo botón central de 'más')
+            // Asegúrate de que esta ruta esté definida en main.dart
+            if (ModalRoute.of(context)?.settings.name != addPostScreenRoute) {
+              Navigator.of(context).pushReplacementNamed(addPostScreenRoute);
+            }
+            break;
+          case 3:
+            // Carrito (el nuevo botón al lado de Garaje)
+            // Asegúrate de que esta ruta esté definida en main.dart
+            if (ModalRoute.of(context)?.settings.name != cartScreenRoute) {
+              Navigator.of(context).pushReplacementNamed(cartScreenRoute);
+            }
+            break;
+          case 4:
+            // Garaje (ahora en la posición 4)
             if (ModalRoute.of(context)?.settings.name != garageScreenRoute) {
               Navigator.of(context).pushReplacementNamed(garageScreenRoute);
             }
@@ -49,16 +60,24 @@ class CustomBottomNavigationBar extends StatelessWidget {
       },
       items: const [
         BottomNavigationBarItem(
-          icon: Icon(Icons.home),//Icono de inicio
+          icon: Icon(Icons.home), // Icono de inicio
           label: 'Inicio',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.search), // Icono de garaje
+          icon: Icon(Icons.search), // Icono de buscar
           label: 'Buscar',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.warehouse), // Icono de lupita 
-          label: 'Garage',
+          icon: Icon(Icons.add_circle), // Icono de añadir/publicar (el 'más' central)
+          label: 'Publicar',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.shopping_cart), // Icono de carrito
+          label: 'Carrito',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.warehouse), // Icono de garaje
+          label: 'Garaje',
         ),
       ],
     );

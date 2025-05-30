@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:motor_deal_granada/screens/garage/public_garage_screen.dart';
 
 import '../../main.dart'; // Asegúrate de que estas rutas sean correctas
+import '../../widgets/bottom_navigation_bar.dart'; // Importa CustomBottomNavigationBar
 
 class BuscarScreen extends StatefulWidget {
   const BuscarScreen({super.key});
@@ -13,7 +14,9 @@ class BuscarScreen extends StatefulWidget {
 
 class _BuscarScreenState extends State<BuscarScreen> {
   String searchText = '';
-  int _currentIndex = 1; // Índice de la pestaña actual (Buscar)
+  // El índice para la barra de navegación inferior.
+  // Asumimos que 'Buscar' corresponde al índice 1 en CustomBottomNavigationBar.
+  int _currentIndex = 1; 
   String selectedFilter = 'usuarios'; // Filtro actual: usuarios, vehiculos o piezas
 
   // Función para construir el stream de la consulta de Firebase
@@ -150,7 +153,7 @@ class _BuscarScreenState extends State<BuscarScreen> {
 
                 // Si no hay texto de búsqueda, pero no hay resultados, mostrar un mensaje más genérico
                 if (docs.isEmpty && searchText.isEmpty) {
-                   return Center(
+                    return Center(
                     child: Text(
                       'Ingresa texto para buscar $selectedFilter.',
                       style: const TextStyle(color: Colors.white70),
@@ -179,44 +182,16 @@ class _BuscarScreenState extends State<BuscarScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: const Color(0xFF1A0033),
-        selectedItemColor: Colors.purpleAccent,
-        unselectedItemColor: Colors.white,
+      // REEMPLAZO DEL BottomNavigationBar por CustomBottomNavigationBar
+      bottomNavigationBar: CustomBottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (index) {
-          if (index == _currentIndex) return;
-
+        onItemSelected: (index) {
           setState(() {
             _currentIndex = index;
           });
-
-          switch (index) {
-            case 0:
-              Navigator.of(context).pushReplacementNamed(scrollScreenRoute);
-              break;
-            case 1:
-              Navigator.of(context).pushReplacementNamed(buscarScreenRoute);
-              break;
-            case 2:
-              Navigator.of(context).pushReplacementNamed(garageScreenRoute);
-              break;
-          }
+          // La lógica de navegación real se maneja dentro de CustomBottomNavigationBar
+          // No es necesario duplicar la navegación aquí.
         },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Inicio',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: 'Buscar',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.warehouse),
-            label: 'Garage',
-          ),
-        ],
       ),
     );
   }
