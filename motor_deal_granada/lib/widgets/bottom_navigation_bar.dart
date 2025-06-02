@@ -14,7 +14,7 @@ class CustomBottomNavigationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BottomNavigationBar(
-      backgroundColor: Colors.black, // Fondo de la barra negro
+      backgroundColor: Colors.black, // ¡CAMBIO AQUÍ! Fondo de la barra negro
       selectedItemColor: Colors.purpleAccent, // Color del icono seleccionado (morado)
       unselectedItemColor: Colors.white, // Color del icono no seleccionado (blanco)
       currentIndex: currentIndex, // Usa el currentIndex pasado como parámetro
@@ -38,14 +38,12 @@ class CustomBottomNavigationBar extends StatelessWidget {
             break;
           case 2:
             // Publicar (el nuevo botón central de 'más')
-            // Asegúrate de que esta ruta esté definida en main.dart
             if (ModalRoute.of(context)?.settings.name != addPostScreenRoute) {
               Navigator.of(context).pushReplacementNamed(addPostScreenRoute);
             }
             break;
           case 3:
             // Carrito (el nuevo botón al lado de Garaje)
-            // Asegúrate de que esta ruta esté definida en main.dart
             if (ModalRoute.of(context)?.settings.name != cartScreenRoute) {
               Navigator.of(context).pushReplacementNamed(cartScreenRoute);
             }

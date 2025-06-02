@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart'; // Para obtener el usuario ac
 
 import '/main.dart'; // Importa main.dart para las rutas nombradas (ej. para volver a la pantalla principal)
 import '/models/vehicle_model.dart'; // Importa tu modelo de vehículo
+import '/models/post_model.dart'; // ¡Importa tu PostModel!
 import 'select_vehicle_screen.dart'; // La nueva pantalla para seleccionar un vehículo
 
 class AddPostScreen extends StatefulWidget {
@@ -35,6 +36,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
     if (_auth.currentUser == null) {
       // Si no hay usuario, redirigir a la pantalla de inicio de sesión o mostrar un mensaje
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Using `loginScreenRoute` from `main.dart` if defined
         Navigator.of(context).pushReplacementNamed(loginScreenRoute);
       });
     }
@@ -114,7 +116,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
     }
   }
 
-  // Método para subir el post a Firebase
+  // Método para subir el post a Firebase, utilizando PostModel
   Future<void> _uploadPost() async {
     if (_imageFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -148,24 +150,31 @@ class _AddPostScreenState extends State<AddPostScreen> {
       // 2. Obtener datos del usuario para el post
       DocumentSnapshot userDoc = await _firestore.collection('users').doc(user.uid).get();
       String username = userDoc.exists ? (userDoc.data() as Map<String, dynamic>)['name'] ?? user.email : user.email ?? 'Usuario Desconocido';
-      String userProfileImageUrl = userDoc.exists ? (userDoc.data() as Map<String, dynamic>)['profileImageUrl'] ?? 'https://i.imgur.com/BoN9kdC.png' : 'https://i.imgur.com/BoN9kdC.png';
+      String? userProfileImageUrl = userDoc.exists ? (userDoc.data() as Map<String, dynamic>)['profileImageUrl'] : null;
 
 
-      // 3. Guardar el post en Firestore
-      await _firestore.collection('posts').add({
-        'userId': user.uid,
-        'username': username,
-        'userProfileImageUrl': userProfileImageUrl, // Añadir URL de imagen de perfil del usuario
-        'imageUrl': imageUrl,
-        'description': _descriptionController.text.trim(),
-        'vehicleId': _selectedVehicle!.id, // Enlazar con el ID del vehículo
-        'vehicleBrand': _selectedVehicle!.brand, // Opcional: guardar algunos detalles del vehículo para visualización rápida
-        'vehicleModel': _selectedVehicle!.model,
-        'timestamp': FieldValue.serverTimestamp(), // Marca de tiempo del servidor
-        'likes': 0,
-        'commentsCount': 0,
-        'shares': 0,
-      });
+      // 3. Crear una instancia de PostModel
+      final newPost = PostModel(
+        id: '', // Firestore generará el ID del documento, lo asignaremos después de la creación si fuera necesario
+        userId: user.uid,
+        username: username,
+        profileImageUrl: userProfileImageUrl,
+        vehicleId: _selectedVehicle!.id,
+        // Asume 'General' como postType por defecto si no tienes un selector de tipo
+        // Si necesitas un selector de tipo, deberías añadir un nuevo estado y un campo de UI para ello.
+        postType: "General", // O podrías tener un Dropdown para seleccionar el tipo de post
+        imageUrl: imageUrl,
+        description: _descriptionController.text.trim(),
+        timestamp: Timestamp.now(), // Firestore establecerá el serverTimestamp en el .add()
+        likesCount: 0,
+        commentsCount: 0,
+        sharesCount: 0,
+        likedUserIds: [],
+        tags: [], // Considera añadir un campo para tags si los usuarios pueden añadirlos
+      );
+
+      // 4. Guardar el post en Firestore usando el método toFirestore() del modelo
+      await _firestore.collection('posts').add(newPost.toFirestore());
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -251,7 +260,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
                                 fit: BoxFit.cover,
                               ),
                             )
-                          : Column(
+                          : const Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.add_a_photo, size: 60, color: Colors.white54),
@@ -273,7 +282,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       hintText: 'Escribe una descripción para tu publicación...',
-                      hintStyle: TextStyle(color: Colors.white54),
+                      hintStyle: const TextStyle(color: Colors.white54),
                       filled: true,
                       fillColor: Colors.grey[850],
                       border: OutlineInputBorder(
