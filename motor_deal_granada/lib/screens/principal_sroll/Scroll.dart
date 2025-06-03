@@ -152,7 +152,7 @@ class _ScrollScreenState extends State<ScrollScreen> {
         children: [
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
-                .collection('Posts')
+                .collection('posts')
                 .orderBy('timestamp', descending: true)
                 .snapshots(),
             builder: (context, snapshot) {

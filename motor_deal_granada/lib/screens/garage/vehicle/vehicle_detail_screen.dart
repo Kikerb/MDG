@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_storage/firebase_storage.dart'; // Importa Firebase Storage
-
+import '../../../models/post_model.dart';
 import '../../../models/vehicle_model.dart';
 import '../../principal_sroll/post/Posts.dart'; // Importa tu PostCard y quizás la lógica de manejo de posts
 

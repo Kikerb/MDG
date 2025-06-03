@@ -34,7 +34,7 @@ class PostModel {
   });
 
   // Factory constructor para crear un PostModel desde un DocumentSnapshot de Firestore
-  factory PostModel.fromFirestore(DocumentSnapshot doc) {
+  factory PostModel.fromFirestore(DocumentSnapshot doc, Map<String, dynamic> data) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return PostModel(
       id: doc.id,
