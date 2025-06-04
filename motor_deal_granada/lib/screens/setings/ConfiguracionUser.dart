@@ -3,13 +3,12 @@ import 'package:url_launcher/url_launcher.dart'; // Para abrir enlaces externos
 
 // Importa el bottom sheet para la cuenta
 import '../../widgets/account_settings_bottom_sheet.dart';
-
 // Importa las nuevas pantallas para las otras secciones
 import '../garage/favorite_vehicles_screen.dart'; // Ejemplo de pantalla de preferencias
+import 'blocked_users_screen.dart'; // Ya existe, pero lo reconfirmo
 import 'interest_categories_screen.dart';
 import 'notification_settings_screen.dart';
 import 'privacy_settings_screen.dart';
-import 'blocked_users_screen.dart'; // Ya existe, pero lo reconfirmo
 
 class ConfiguracionUser extends StatelessWidget {
   const ConfiguracionUser({super.key});

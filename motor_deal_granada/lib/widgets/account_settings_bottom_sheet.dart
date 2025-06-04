@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:url_launcher/url_launcher.dart'; // Para abrir URLs, útil si pones enlaces de ayuda
+// Para abrir URLs, útil si pones enlaces de ayuda
 
 import '../screens/setings/EditProfileScreen.dart';
 import '../screens/setings/change_email_screen.dart';

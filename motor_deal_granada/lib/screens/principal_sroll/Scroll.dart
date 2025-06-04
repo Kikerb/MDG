@@ -1,14 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 
-// Importaciones corregidas según tu estructura de carpetas
-import 'post/Posts.dart'; // Correcto, ya que Posts.dart está en el mismo directorio
 import '../../main.dart'; // Correcto
-import 'post/CommentsScreen.dart'; // Correcto
-import 'notificaciones/NotificationsScreen.dart'; // Correcto
 import '../../widgets/bottom_navigation_bar.dart'; // Correcto
 import 'chat/chat_principal.dart'; // Correcto
+import 'notificaciones/NotificationsScreen.dart'; // Correcto
+import 'post/CommentsScreen.dart'; // Correcto
+// Importaciones corregidas según tu estructura de carpetas
+import 'post/Posts.dart'; // Correcto, ya que Posts.dart está en el mismo directorio
 
 class ScrollScreen extends StatefulWidget {
   const ScrollScreen({super.key});
@@ -64,7 +64,7 @@ class _ScrollScreenState extends State<ScrollScreen> {
       return;
     }
 
-    final docRef = FirebaseFirestore.instance.collection('Posts').doc(postId);
+    final docRef = FirebaseFirestore.instance.collection('posts').doc(postId);
 
     try {
       final docSnap = await docRef.get();
@@ -95,12 +95,30 @@ class _ScrollScreenState extends State<ScrollScreen> {
     }
   }
 
-  void _handleComment(String postId) {
-    print('Abriendo comentarios para post: $postId');
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => CommentsScreen(postId: postId)),
-    );
+  void _handleComment(String postId) async {
+  print('Abriendo comentarios para post: $postId');
+  
+  // Espera a que se cierre la pantalla de comentarios
+  final result = await Navigator.of(context).push<bool>(
+    MaterialPageRoute(builder: (_) => CommentsScreen(postId: postId)),
+  );
+
+  // Si se agregó un comentario, actualizamos el contador
+  if (result == true) {
+    try {
+      await FirebaseFirestore.instance
+          .collection('posts')
+          .doc(postId)
+          .update({
+        'comments': FieldValue.increment(1),
+      });
+      print('Contador de comentarios incrementado para post $postId');
+    } catch (e) {
+      print('Error al actualizar contador de comentarios: $e');
+    }
   }
+}
+
 
   void _handleShare(String postId) {
     print('Compartir post: $postId');

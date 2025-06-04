@@ -15,30 +15,27 @@ class _CommentsScreenState extends State<CommentsScreen> {
   final currentUser = FirebaseAuth.instance.currentUser;
 
   Future<void> _addComment() async {
-    final text = _commentController.text.trim();
-    if (text.isEmpty) return;
+  final text = _commentController.text.trim();
+  if (text.isEmpty) return;
 
-    await FirebaseFirestore.instance
-        .collection('Posts')
-        .doc(widget.postId)
-        .collection('comments')
-        .add({
-      'userId': currentUser?.uid,
-      'username': currentUser?.displayName ?? 'Anonimo',
-      'text': text,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
+  await FirebaseFirestore.instance
+      .collection('Posts')
+      .doc(widget.postId)
+      .collection('comments')
+      .add({
+    'userId': currentUser?.uid,
+    'username': currentUser?.displayName ?? 'Anónimo',
+    'text': text,
+    'timestamp': FieldValue.serverTimestamp(),
+  });
 
-    // Opcional: actualizar contador de comentarios en el post
-    final postRef = FirebaseFirestore.instance.collection('Posts').doc(widget.postId);
-    await FirebaseFirestore.instance.runTransaction((transaction) async {
-      final snapshot = await transaction.get(postRef);
-      final currentComments = snapshot['comments'] ?? 0;
-      transaction.update(postRef, {'comments': currentComments + 1});
-    });
-
-    _commentController.clear();
+  _commentController.clear();
+  
+  if (Navigator.canPop(context)) {
+    Navigator.of(context).pop(true);
   }
+}
+
 
   @override
   Widget build(BuildContext context) {

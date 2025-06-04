@@ -1,12 +1,10 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import 'chat_edit.dart';
 import 'opciones_chat_salir.dart'; // Asegúrate de que esta ruta sea correcta
-// Asumiendo que tienes un ChatThemeProvider definido en alguna parte de tu proyecto
-// import 'package:your_app_name/providers/chat_theme_provider.dart'; // <--- Descomenta y ajusta si es necesario
-import 'chat_principal.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
