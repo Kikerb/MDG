@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../widgets/bottom_navigation_bar.dart'; // Importa tu barra de navegación personalizada
-import '../../main.dart'; // Importa main.dart para las rutas (si es necesario para la navegación de la barra inferior)
-
-// Esta es una pantalla de prueba para el mercado.
-// Puedes expandir su funcionalidad y diseño más adelante.
+import '../../widgets/bottom_navigation_bar.dart';
+import '../../models/part_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'create_part_screen.dart'; // Importa la pantalla de creación
 
 class MarketScreen extends StatefulWidget {
   const MarketScreen({super.key});
@@ -13,32 +13,35 @@ class MarketScreen extends StatefulWidget {
 }
 
 class _MarketScreenState extends State<MarketScreen> {
-  // El índice para la barra de navegación inferior.
-  // Asumimos que 'Mercado' o 'Carrito' corresponde al índice 3 en CustomBottomNavigationBar.
-  int _currentIndex = 3; 
+  int _currentIndex = 3;
+
+  Stream<List<PartModel>> getPartsStream() {
+    return FirebaseFirestore.instance
+        .collection('parts')
+        .where('isSold', isEqualTo: false)
+        .orderBy('listedAt', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) =>
+              snapshot.docs.map((doc) => PartModel.fromFirestore(doc)).toList(),
+        );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black, // Fondo oscuro para la pantalla de mercado
+      backgroundColor: Colors.black,
       appBar: AppBar(
         title: const Text(
           'Mercado',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.transparent, // Transparente para el gradiente
+        backgroundColor: Colors.transparent,
         elevation: 0,
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                Color(0xFF1A0033), // Color púrpura oscuro
-                Color.fromARGB(255, 60, 0, 100), // Color púrpura ligeramente más claro
-              ],
+              colors: [Color(0xFF1A0033), Color.fromARGB(255, 60, 0, 100)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -46,67 +49,108 @@ class _MarketScreenState extends State<MarketScreen> {
         ),
         centerTitle: true,
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.storefront, // Un icono que representa una tienda o mercado
-              size: 100,
-              color: Colors.purpleAccent.withOpacity(0.7), // Color de acento
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              '¡Bienvenido al Mercado!',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Aquí podrás explorar vehículos y piezas en venta.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 30),
-            // Puedes añadir un botón para simular la carga de productos
-            ElevatedButton.icon(
-              onPressed: () {
-                // Lógica de prueba: por ahora, solo un mensaje
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Cargando productos del mercado...')),
-                );
-              },
-              icon: const Icon(Icons.refresh, color: Colors.white),
-              label: const Text(
-                'Cargar Productos',
+      body: StreamBuilder<List<PartModel>>(
+        stream: getPartsStream(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.purpleAccent),
+            );
+          }
+          if (snapshot.hasError) {
+            return const Center(
+              child: Text(
+                'Error al cargar los productos',
                 style: TextStyle(color: Colors.white),
               ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.purple, // Color del botón
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+            );
+          }
+          final parts = snapshot.data ?? [];
+          if (parts.isEmpty) {
+            return const Center(
+              child: Text(
+                'No hay piezas disponibles aún.',
+                style: TextStyle(color: Colors.white70),
               ),
-            ),
-          ],
-        ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(12),
+            itemCount: parts.length,
+            itemBuilder: (context, index) {
+              final part = parts[index];
+              return Card(
+                color: const Color(0xFF1A0033),
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(12),
+                  leading: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: CachedNetworkImage(
+                      imageUrl: part.imageUrl,
+                      width: 60,
+                      height: 60,
+                      fit: BoxFit.cover,
+                      placeholder:
+                          (context, url) =>
+                              const CircularProgressIndicator(strokeWidth: 2),
+                      errorWidget:
+                          (context, url, error) =>
+                              const Icon(Icons.error, color: Colors.red),
+                    ),
+                  ),
+                  title: Text(
+                    part.partName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Text(
+                    '${part.price.toStringAsFixed(2)} ${part.currency} - ${part.condition}',
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                  trailing: const Icon(
+                    Icons.arrow_forward_ios,
+                    color: Colors.white30,
+                    size: 16,
+                  ),
+                  onTap: () {
+                    // Navegación a detalle si se desea
+                  },
+                ),
+              );
+            },
+          );
+        },
       ),
-      // Añadir el CustomBottomNavigationBar aquí
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CreatePartScreen()),
+          );
+
+          if (result == true) {
+            setState(
+              () {},
+            ); // Esto forzará que el StreamBuilder vuelva a construir
+          }
+        },
+
+        backgroundColor: Colors.purple,
+        child: const Icon(Icons.add, size: 30),
+      ),
       bottomNavigationBar: CustomBottomNavigationBar(
         currentIndex: _currentIndex,
         onItemSelected: (index) {
           setState(() {
             _currentIndex = index;
           });
-          // La lógica de navegación real se maneja dentro de CustomBottomNavigationBar
-          // No es necesario duplicar la navegación aquí si la barra ya lo hace.
         },
       ),
     );
