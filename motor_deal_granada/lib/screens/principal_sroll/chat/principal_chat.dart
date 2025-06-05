@@ -52,17 +52,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.group_add, color: Colors.white),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const CreateGroupScreen()),
-              );
-            },
-          ),
-        ],
       ),
       body: StreamBuilder<QuerySnapshot>(
         // Escucha todos los documentos en la colección 'messages'
