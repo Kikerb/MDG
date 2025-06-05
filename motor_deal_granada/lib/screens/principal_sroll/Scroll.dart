@@ -3,19 +3,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../main.dart'; // Correcto
-import '../../widgets/bottom_navigation_bar.dart'; // Correcto
-
-import 'chat/chat_principal.dart'; // Correcto
-import 'chat/chatSelectionScreen.dart'; // Correcto
-
+import '../../widgets/bottom_navigation_bar.dart';
+import 'chat/chat_list_screen.dart' as cls;
+import 'chat/contactos_chat.dart';
+import 'chat/servicio_chat.dart' as cs;
 import 'notificaciones/NotificationsScreen.dart'; // Correcto
 import 'post/CommentsScreen.dart'; // Correcto
-// Importaciones corregidas según tu estructura de carpetas
 import 'post/Posts.dart'; // Correcto, ya que Posts.dart está en el mismo directorio
-import 'post/compartir.dart';
-
-import 'chat/chat_service.dart';
-
 class ScrollScreen extends StatefulWidget {
   const ScrollScreen({super.key});
 
@@ -151,51 +145,62 @@ class _ScrollScreenState extends State<ScrollScreen> {
         .add(messageData);
   }
 
-Future<void> _handleShare(String postId) async {
-  try {
-    final postDoc = await FirebaseFirestore.instance.collection('posts').doc(postId).get();
-    if (!postDoc.exists) {
-      print('No existe el post con id $postId');
+  Future<void> _handleShare(String postId) async {
+    try {
+      final postDoc = await FirebaseFirestore.instance.collection('posts').doc(postId).get();
+      if (!postDoc.exists) {
+        print('No existe el post con id $postId');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se encontró el post para compartir')),
+        );
+        return;
+      }
+
+      final data = postDoc.data()!;
+
+      final description = data['description'] ?? 'Publicación sin descripción';
+      final username = data['username'] ?? 'Usuario Desconocido';
+      final imageUrl = data['imageUrl'] ?? 'https://via.placeholder.com/150/000000/FFFFFF?text=No+Image';
+      final price = data['price'] as String?;
+      final status = data['status'] as String?;
+
+      // Selecciona chat
+      final selectedChatId = await Navigator.of(context).push<String>(
+        MaterialPageRoute(
+          builder: (_) => cls.ChatListScreen(   // Alias cls para chat_list_screen.dart
+            postToShare: {
+              'postId': postId,
+              'description': description,
+              'username': username,
+              'imageUrl': imageUrl,
+              'price': price ?? '',
+              'status': status ?? '',
+            },
+          ),
+        ),
+      );
+
+      if (selectedChatId != null) {
+        await cs.ChatService.sharePostToChat(
+          chatId: selectedChatId,
+          postId: postId,
+          username: username,
+          imageUrl: imageUrl,
+          description: description,
+          price: price,
+          status: status,
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Post compartido en el chat')),
+        );
+      }
+    } catch (e) {
+      print('Error al compartir post: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se encontró el post para compartir')),
-      );
-      return;
-    }
-
-    final data = postDoc.data()!;
-
-    final description = data['description'] ?? 'Publicación sin descripción';
-    final username = data['username'] ?? 'Usuario Desconocido';
-    final imageUrl = data['imageUrl'] ?? 'https://via.placeholder.com/150/000000/FFFFFF?text=No+Image';
-    final price = data['price'] as String?;
-    final status = data['status'] as String?;
-
-    // Selecciona chat
-    final selectedChatId = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => const ChatSelectionScreen()),
-    );
-
-    if (selectedChatId != null) {
-      await ChatService.sharePostToChat(
-        chatId: selectedChatId,
-        postId: postId,
-        username: username,
-        imageUrl: imageUrl,
-        description: description,
-        price: price,
-        status: status,
-      );
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Post compartido en el chat')),
+        SnackBar(content: Text('Error al compartir post: $e')),
       );
     }
-  } catch (e) {
-    print('Error al compartir el post: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('No se pudo compartir el post')),
-    );
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -314,7 +319,7 @@ Future<void> _handleShare(String postId) async {
               onTap: () {
                 print('Navegando a ChatListScreen.');
                 Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const ChatListScreen()),
+                  MaterialPageRoute(builder: (_) => ContactosChatScreen()),
                 );
               },
               child: Container(

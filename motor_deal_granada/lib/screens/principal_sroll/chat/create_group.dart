@@ -367,7 +367,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
 
 // Extensión para List para simular .firstWhereOrNull
 // Flutter 3.10+ ya lo tiene, pero si usas una versión anterior, esto es útil.
-extension ListExtension<T> on List<T> {
+extension CreateGroupListExtension<T> on List<T> {
   T? firstWhereOrNull(bool Function(T element) test) {
     for (var element in this) {
       if (test(element)) {

@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../models/chat_model.dart';
-import 'chat_screen.dart';
+import 'screen_chat.dart';
 import 'create_group.dart';
+import 'chat_list_screen.dart';
 
 // Extensión para List para simular .firstWhereOrNull
 // Flutter 3.10+ ya lo tiene, pero si usas una versión anterior, esto es útil.

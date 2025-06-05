@@ -5,16 +5,16 @@ import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
 import 'screens/auth/auth_screen.dart';
-import 'screens/login/login_screen.dart';
-import 'screens/principal_sroll/Scroll.dart';
-import 'screens/search/buscar.dart';
-import 'screens/principal_sroll/chat/chat_edit.dart' as chat_edit;
 import 'screens/garage/garage.dart';
+import 'screens/login/login_screen.dart';
+import 'screens/market/marketscreen.dart';
+import 'screens/principal_sroll/Scroll.dart';
+import 'screens/principal_sroll/chat/chat_edit.dart' as chat_edit;
+import 'screens/principal_sroll/chat/screen_chat.dart' as chat_screen;
+import 'screens/principal_sroll/post/addpostscreen.dart';
+import 'screens/search/buscar.dart';
 import 'screens/signUp/signUp_screen.dart';
 import 'screens/splash/splash_screen.dart';
-import 'screens/market/marketscreen.dart';
-import 'screens/principal_sroll/post/addpostscreen.dart';
-import 'screens/principal_sroll/chat/chat_screen.dart' as chat_screen;
 
 // rutas constantes
 const String splashScreenRoute = '/splash';
@@ -26,6 +26,7 @@ const String garageScreenRoute = '/garage';
 const String buscarScreenRoute = '/buscar';
 const String noticiasScreenRoute = '/noticias';
 const String chatScreenRoute = '/chat';
+const String chatEditScreenRoute = '/chat_edit';
 const String cartScreenRoute = '/market';
 const String addPostScreenRoute = '/addpost';
 
@@ -34,12 +35,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(
-    ChangeNotifierProvider(
-      create: (context) => chat_screen.ChatThemeProvider(),
-      child: const MyApp(),
-    ),
-  );
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -66,17 +62,19 @@ class MyApp extends StatelessWidget {
         noticiasScreenRoute: (context) => const NoticiasScreen(),
         cartScreenRoute: (context) => const MarketScreen(),
         addPostScreenRoute: (context) => const AddPostScreen(),
-        // Quitamos chatScreenRoute de aquí porque la manejamos en onGenerateRoute
+        // NOTA: No declaramos rutas para chatScreenRoute ni chatEditScreenRoute aquí
       },
       onGenerateRoute: (settings) {
+        // Manejo ruta ChatScreen
         if (settings.name == chatScreenRoute) {
           final args = settings.arguments as Map<String, dynamic>?;
 
           if (args == null || !args.containsKey('chatId')) {
-            // Aquí podrías manejar el error o devolver una pantalla por defecto
             return MaterialPageRoute(
               builder: (context) => const Scaffold(
-                body: Center(child: Text('No se proporcionaron los argumentos necesarios para ChatScreen')),
+                body: Center(
+                  child: Text('No se proporcionaron los argumentos necesarios para ChatScreen'),
+                ),
               ),
             );
           }
@@ -91,7 +89,34 @@ class MyApp extends StatelessWidget {
             ),
           );
         }
-        return null; // Deja que flutter maneje otras rutas no definidas
+
+        // Manejo ruta ChatEditScreen
+        if (settings.name == chatEditScreenRoute) {
+          final args = settings.arguments as Map<String, dynamic>?;
+
+          if (args == null ||
+              !args.containsKey('chatId') ||
+              !args.containsKey('otherUserName')) {
+            return MaterialPageRoute(
+              builder: (context) => const Scaffold(
+                body: Center(
+                  child: Text('No se proporcionaron los argumentos necesarios para ChatEditScreen'),
+                ),
+              ),
+            );
+          }
+
+          return MaterialPageRoute(
+            builder: (context) => chat_edit.ChatScreen(
+              chatId: args['chatId'],
+              otherUserId: args['otherUserId'], // puede ser null
+              otherUserName: args['otherUserName'],
+            ),
+          );
+        }
+
+        // Si la ruta no coincide, deja que flutter la maneje
+        return null;
       },
     );
   }
