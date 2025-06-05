@@ -4,11 +4,17 @@ import 'package:flutter/material.dart';
 
 import '../../main.dart'; // Correcto
 import '../../widgets/bottom_navigation_bar.dart'; // Correcto
+
 import 'chat/chat_principal.dart'; // Correcto
+import 'chat/chatSelectionScreen.dart'; // Correcto
+
 import 'notificaciones/NotificationsScreen.dart'; // Correcto
 import 'post/CommentsScreen.dart'; // Correcto
 // Importaciones corregidas según tu estructura de carpetas
 import 'post/Posts.dart'; // Correcto, ya que Posts.dart está en el mismo directorio
+import 'post/compartir.dart';
+
+import 'chat/chat_service.dart';
 
 class ScrollScreen extends StatefulWidget {
   const ScrollScreen({super.key});
@@ -18,9 +24,8 @@ class ScrollScreen extends StatefulWidget {
 }
 
 class _ScrollScreenState extends State<ScrollScreen> {
-  // Eliminamos _defaultPostInserted y _insertDefaultPost completamente (ya no es necesario)
-  String? _currentUserId; // Usamos la convención _ para variables de estado privadas
-  int _currentIndex = 0; // Índice inicial para Inicio (0)
+  String? _currentUserId; // Variable privada para usuario actual
+  int _currentIndex = 0; // Índice para navegación
 
   @override
   void initState() {
@@ -52,8 +57,6 @@ class _ScrollScreenState extends State<ScrollScreen> {
       print('Error al añadir notificación de inicio de sesión: $e');
     }
   }
-
-  // Las funciones _insertDefaultPost y _addLoginNotification ya están en el código.
 
   Future<void> _handleLike(String postId) async {
     if (_currentUserId == null) {
@@ -96,36 +99,103 @@ class _ScrollScreenState extends State<ScrollScreen> {
   }
 
   void _handleComment(String postId) async {
-  print('Abriendo comentarios para post: $postId');
-  
-  // Espera a que se cierre la pantalla de comentarios
-  final result = await Navigator.of(context).push<bool>(
-    MaterialPageRoute(builder: (_) => CommentsScreen(postId: postId)),
-  );
+    print('Abriendo comentarios para post: $postId');
 
-  // Si se agregó un comentario, actualizamos el contador
-  if (result == true) {
-    try {
-      await FirebaseFirestore.instance
-          .collection('posts')
-          .doc(postId)
-          .update({
-        'comments': FieldValue.increment(1),
-      });
-      print('Contador de comentarios incrementado para post $postId');
-    } catch (e) {
-      print('Error al actualizar contador de comentarios: $e');
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => CommentsScreen(postId: postId)),
+    );
+
+    if (result == true) {
+      try {
+        await FirebaseFirestore.instance.collection('posts').doc(postId).update({
+          'comments': FieldValue.increment(1),
+        });
+        print('Contador de comentarios incrementado para post $postId');
+      } catch (e) {
+        print('Error al actualizar contador de comentarios: $e');
+      }
     }
   }
-}
 
+  Future<void> _sendPostToChat({
+    required String chatId,
+    required String postId,
+    required String username,
+    required String imageUrl,
+    required String description,
+    String? price,
+    String? status,
+  }) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
 
-  void _handleShare(String postId) {
-    print('Compartir post: $postId');
+    final messageData = {
+      'senderId': currentUser.uid,
+      'timestamp': FieldValue.serverTimestamp(),
+      'type': 'shared_post',
+      'content': {
+        'postId': postId,
+        'username': username,
+        'imageUrl': imageUrl,
+        'description': description,
+        'price': price,
+        'status': status,
+      },
+      'readBy': [],
+    };
+
+    await FirebaseFirestore.instance
+        .collection('messages')
+        .doc(chatId)
+        .collection('chatMessages')
+        .add(messageData);
+  }
+
+Future<void> _handleShare(String postId) async {
+  try {
+    final postDoc = await FirebaseFirestore.instance.collection('posts').doc(postId).get();
+    if (!postDoc.exists) {
+      print('No existe el post con id $postId');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se encontró el post para compartir')),
+      );
+      return;
+    }
+
+    final data = postDoc.data()!;
+
+    final description = data['description'] ?? 'Publicación sin descripción';
+    final username = data['username'] ?? 'Usuario Desconocido';
+    final imageUrl = data['imageUrl'] ?? 'https://via.placeholder.com/150/000000/FFFFFF?text=No+Image';
+    final price = data['price'] as String?;
+    final status = data['status'] as String?;
+
+    // Selecciona chat
+    final selectedChatId = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const ChatSelectionScreen()),
+    );
+
+    if (selectedChatId != null) {
+      await ChatService.sharePostToChat(
+        chatId: selectedChatId,
+        postId: postId,
+        username: username,
+        imageUrl: imageUrl,
+        description: description,
+        price: price,
+        status: status,
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Post compartido en el chat')),
+      );
+    }
+  } catch (e) {
+    print('Error al compartir el post: $e');
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Función de compartir (futuro)')),
+      const SnackBar(content: Text('No se pudo compartir el post')),
     );
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -166,6 +236,7 @@ class _ScrollScreenState extends State<ScrollScreen> {
           ),
         ],
       ),
+
       body: Stack(
         children: [
           StreamBuilder<QuerySnapshot>(
@@ -209,14 +280,15 @@ class _ScrollScreenState extends State<ScrollScreen> {
 
                   final List<String> likedUsers =
                       List<String>.from(data['likedUsers'] ?? []);
-                  
+
                   final bool isLikedByCurrentUser =
                       _currentUserId != null && likedUsers.contains(_currentUserId);
 
                   return PostCard(
                     postId: post.id,
                     username: data['username'] ?? 'Usuario Desconocido',
-                    imageUrl: data['imageUrl'] ?? 'https://via.placeholder.com/150/000000/FFFFFF?text=No+Image',
+                    imageUrl: data['imageUrl'] ??
+                        'https://via.placeholder.com/150/000000/FFFFFF?text=No+Image',
                     likes: data['likes'] ?? 0,
                     comments: data['comments'] ?? 0,
                     shares: data['shares'] ?? 0,
@@ -225,11 +297,10 @@ class _ScrollScreenState extends State<ScrollScreen> {
                     onLike: () => _handleLike(post.id),
                     onComment: () => _handleComment(post.id),
                     onShare: () => _handleShare(post.id),
-                    
+
                     showActions: true,
-                    // No pasar price y status aquí, ya que es el feed principal
-                    showPrice: false, // Explicitamente false para el feed
-                    showStatus: false, // Explicitamente false para el feed
+                    showPrice: false,
+                    showStatus: false,
                     showUsername: true,
                   );
                 },
@@ -260,8 +331,7 @@ class _ScrollScreenState extends State<ScrollScreen> {
                     ),
                   ],
                 ),
-                child: const Icon(Icons.contacts,
-                    color: Colors.white, size: 32),
+                child: const Icon(Icons.contacts, color: Colors.white, size: 32),
               ),
             ),
           ),

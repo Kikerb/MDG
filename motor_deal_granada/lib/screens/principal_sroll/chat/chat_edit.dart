@@ -1,22 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Para guardar preferencias
-import 'package:provider/provider.dart'; // Si usas Provider para gestionar el estado global
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 
-// Opcional: Define un Provider para el estado del tema del chat
-// Si no usas Provider, puedes omitir esta clase y gestionar las preferencias
-// directamente en ChatScreen, pero Provider es más escalable para temas globales.
 class ChatThemeProvider with ChangeNotifier {
   Color _chatBubbleColor = Colors.purpleAccent;
   Color _chatOtherBubbleColor = Colors.grey[800]!;
   Color _chatTextColor = Colors.white;
-  String _chatBackground = 'default'; // 'default', 'image_1', 'color_1', etc.
+  String _chatBackground = 'default';
 
   Color get chatBubbleColor => _chatBubbleColor;
   Color get chatOtherBubbleColor => _chatOtherBubbleColor;
   Color get chatTextColor => _chatTextColor;
   String get chatBackground => _chatBackground;
 
-  // Constructor para cargar las preferencias al iniciar
   ChatThemeProvider() {
     _loadChatPreferences();
   }
@@ -59,16 +55,23 @@ class ChatThemeProvider with ChangeNotifier {
   }
 }
 
-
 class ChatEditScreen extends StatefulWidget {
-  const ChatEditScreen({super.key});
+  final String chatId;
+  final String? otherUserId;
+  final String otherUserName;
+
+  const ChatEditScreen({
+    super.key,
+    required this.chatId,
+    this.otherUserId,
+    required this.otherUserName,
+  });
 
   @override
   State<ChatEditScreen> createState() => _ChatEditScreenState();
 }
 
 class _ChatEditScreenState extends State<ChatEditScreen> {
-  // Colores predefinidos para las burbujas de chat
   final List<Color> availableBubbleColors = [
     Colors.purpleAccent,
     Colors.blueAccent,
@@ -76,13 +79,12 @@ class _ChatEditScreenState extends State<ChatEditScreen> {
     Colors.orangeAccent,
     Colors.redAccent,
     Colors.tealAccent,
-    Colors.grey[700]!, // Para un gris oscuro
+    Colors.grey[700]!,
     Colors.pinkAccent,
   ];
 
-  // Colores predefinidos para las burbujas del otro usuario
   final List<Color> availableOtherBubbleColors = [
-    Colors.grey[800]!, // Default
+    Colors.grey[800]!,
     Colors.blueGrey[700]!,
     Colors.deepPurple[700]!,
     Colors.brown[700]!,
@@ -90,7 +92,6 @@ class _ChatEditScreenState extends State<ChatEditScreen> {
     Colors.lime[700]!,
   ];
 
-  // Colores predefinidos para el texto
   final List<Color> availableTextColors = [
     Colors.white,
     Colors.black,
@@ -98,19 +99,15 @@ class _ChatEditScreenState extends State<ChatEditScreen> {
     Colors.cyan,
   ];
 
-  // Opciones de fondo (puedes expandir esto con rutas de imágenes)
   final List<Map<String, String>> availableBackgrounds = [
     {'name': 'Por defecto', 'value': 'default'},
     {'name': 'Degradado Azul', 'value': 'gradient_blue'},
     {'name': 'Degradado Verde', 'value': 'gradient_green'},
     {'name': 'Degradado Púrpura', 'value': 'gradient_purple'},
-    // Aquí puedes añadir rutas a imágenes si quieres fondos de imagen
-    // {'name': 'Imagen 1', 'value': 'assets/images/chat_bg1.jpg'},
   ];
 
   @override
   Widget build(BuildContext context) {
-    // Escucha los cambios del proveedor de tema si lo estás utilizando
     final chatThemeProvider = Provider.of<ChatThemeProvider>(context);
 
     return Scaffold(
@@ -124,9 +121,7 @@ class _ChatEditScreenState extends State<ChatEditScreen> {
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
         ),
       ),
       body: SingleChildScrollView(
@@ -135,54 +130,35 @@ class _ChatEditScreenState extends State<ChatEditScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildSectionTitle('Color de tus burbujas'),
-            _buildColorSelection(
-              availableBubbleColors,
-              chatThemeProvider.chatBubbleColor,
-              (color) => chatThemeProvider.setChatBubbleColor(color),
-            ),
+            _buildColorSelection(availableBubbleColors, chatThemeProvider.chatBubbleColor,
+                chatThemeProvider.setChatBubbleColor),
             const SizedBox(height: 20),
             _buildSectionTitle('Color de las burbujas del otro'),
-            _buildColorSelection(
-              availableOtherBubbleColors,
-              chatThemeProvider.chatOtherBubbleColor,
-              (color) => chatThemeProvider.setChatOtherBubbleColor(color),
-            ),
+            _buildColorSelection(availableOtherBubbleColors, chatThemeProvider.chatOtherBubbleColor,
+                chatThemeProvider.setChatOtherBubbleColor),
             const SizedBox(height: 20),
             _buildSectionTitle('Color del texto'),
-            _buildColorSelection(
-              availableTextColors,
-              chatThemeProvider.chatTextColor,
-              (color) => chatThemeProvider.setChatTextColor(color),
-            ),
+            _buildColorSelection(availableTextColors, chatThemeProvider.chatTextColor,
+                chatThemeProvider.setChatTextColor),
             const SizedBox(height: 20),
             _buildSectionTitle('Fondo del chat'),
-            _buildBackgroundSelection(
-              availableBackgrounds,
-              chatThemeProvider.chatBackground,
-              (backgroundValue) => chatThemeProvider.setChatBackground(backgroundValue),
-            ),
-            // Puedes añadir más opciones aquí
+            _buildBackgroundSelection(availableBackgrounds, chatThemeProvider.chatBackground,
+                chatThemeProvider.setChatBackground),
             const SizedBox(height: 30),
             Center(
               child: ElevatedButton.icon(
                 onPressed: () {
-                  // Opcional: Mostrar un mensaje de confirmación
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Configuración guardada.')),
                   );
-                  Navigator.pop(context); // Volver a la pantalla de chat
+                  Navigator.pop(context);
                 },
                 icon: const Icon(Icons.save, color: Colors.white),
-                label: const Text(
-                  'Guardar Configuración',
-                  style: TextStyle(color: Colors.white),
-                ),
+                label: const Text('Guardar Configuración', style: TextStyle(color: Colors.white)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.purple,
                   padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
                 ),
               ),
             ),
@@ -192,22 +168,13 @@ class _ChatEditScreenState extends State<ChatEditScreen> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10.0),
-      child: Text(
-        title,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
+  Widget _buildSectionTitle(String title) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10.0),
+        child: Text(title,
+            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+      );
 
-  Widget _buildColorSelection(
-      List<Color> colors, Color selectedColor, Function(Color) onColorSelected) {
+  Widget _buildColorSelection(List<Color> colors, Color selectedColor, Function(Color) onColorSelected) {
     return SizedBox(
       height: 50,
       child: ListView.builder(
@@ -239,8 +206,8 @@ class _ChatEditScreenState extends State<ChatEditScreen> {
     );
   }
 
-  Widget _buildBackgroundSelection(
-      List<Map<String, String>> backgrounds, String selectedBackground, Function(String) onBackgroundSelected) {
+  Widget _buildBackgroundSelection(List<Map<String, String>> backgrounds, String selectedBackground,
+      Function(String) onBackgroundSelected) {
     return SizedBox(
       height: 50,
       child: ListView.builder(
@@ -248,10 +215,9 @@ class _ChatEditScreenState extends State<ChatEditScreen> {
         itemCount: backgrounds.length,
         itemBuilder: (context, index) {
           final background = backgrounds[index];
-          final String name = background['name']!;
-          final String value = background['value']!;
+          final name = background['name']!;
+          final value = background['value']!;
 
-          // Si es un degradado o color sólido (puedes expandir esto)
           Widget backgroundPreview;
           if (value.startsWith('gradient_')) {
             Gradient gradient;
@@ -262,34 +228,26 @@ class _ChatEditScreenState extends State<ChatEditScreen> {
             } else if (value == 'gradient_purple') {
               gradient = const LinearGradient(colors: [Colors.purple, Colors.deepPurpleAccent]);
             } else {
-              gradient = const LinearGradient(colors: [Colors.grey, Colors.black]); // Fallback
+              gradient = const LinearGradient(colors: [Colors.grey, Colors.black]);
             }
             backgroundPreview = Ink(
-              decoration: BoxDecoration(
-                gradient: gradient,
-                borderRadius: BorderRadius.circular(10),
-              ),
+              decoration: BoxDecoration(gradient: gradient, borderRadius: BorderRadius.circular(10)),
               child: Center(
-                child: Text(
-                  name,
-                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
-                ),
+                child: Text(name,
+                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center),
               ),
             );
-          } else { // Asume color sólido o default
+          } else {
             backgroundPreview = Container(
-              color: Colors.grey[800], // Fondo por defecto para la preview
+              color: Colors.grey[800],
               child: Center(
-                child: Text(
-                  name,
-                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
-                ),
+                child: Text(name,
+                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center),
               ),
             );
           }
-
 
           return GestureDetector(
             onTap: () => onBackgroundSelected(value),
@@ -300,14 +258,9 @@ class _ChatEditScreenState extends State<ChatEditScreen> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: selectedBackground == value ? Colors.white : Colors.transparent,
-                  width: 3,
-                ),
+                    color: selectedBackground == value ? Colors.white : Colors.transparent, width: 3),
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: backgroundPreview,
-              ),
+              child: ClipRRect(borderRadius: BorderRadius.circular(8), child: backgroundPreview),
             ),
           );
         },
