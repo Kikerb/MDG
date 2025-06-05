@@ -81,7 +81,9 @@ class _ContactosChatScreenState extends State<ContactosChatScreen> {
             );
           }
 
-          final List<ChatModel> chats = chatListSnapshot.data!.docs.map((doc) => ChatModel.fromFirestore(doc)).toList();
+          final List<ChatModel> chats = chatListSnapshot.data!.docs
+              .map((doc) => ChatModel.fromFirestore(doc))
+              .toList();
 
           return ListView.builder(
             itemCount: chats.length,
@@ -136,6 +138,22 @@ class _ContactosChatScreenState extends State<ContactosChatScreen> {
     );
   }
 
+  String _getLastMessagePreview(ChatModel chat) {
+    if (chat.lastMessageType == 'shared_post' && chat.lastMessageContent is Map) {
+      final content = chat.lastMessageContent as Map<String, dynamic>;
+      final description = content['description'] ?? 'Post compartido';
+      return '📌 $description';
+    }
+
+    if (chat.lastMessageContent is String) {
+      return (chat.lastMessageContent as String).isEmpty
+          ? 'Toca para iniciar una conversación.'
+          : chat.lastMessageContent as String;
+    }
+
+    return 'Mensaje no reconocido';
+  }
+
   Widget _buildChatListItem({
     required ChatModel chat,
     required String displayName,
@@ -144,9 +162,7 @@ class _ContactosChatScreenState extends State<ContactosChatScreen> {
     final nonNullCurrentUser = currentUser!;
     final unreadCount = chat.unreadCounts[nonNullCurrentUser.uid] ?? 0;
     final subtitleColor = unreadCount > 0 ? Colors.lightBlueAccent : Colors.white70;
-    final lastMessageContent = chat.lastMessageContent.isEmpty
-        ? 'Toca para iniciar una conversación.'
-        : chat.lastMessageContent;
+    final lastMessagePreview = _getLastMessagePreview(chat);
 
     return Card(
       color: Colors.grey[900],
@@ -179,7 +195,7 @@ class _ContactosChatScreenState extends State<ContactosChatScreen> {
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
-          lastMessageContent,
+          lastMessagePreview,
           style: TextStyle(
             color: subtitleColor,
             fontStyle: unreadCount > 0 ? FontStyle.italic : FontStyle.normal,

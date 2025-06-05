@@ -4,22 +4,29 @@ class MessageModel {
   final String senderId;
   final String content;
   final Timestamp timestamp;
-  final String type; // Ej: 'text', 'image', 'vehicle_offer', 'part_offer' [cite: 47]
-  final String? relatedItemId; // ID del artículo si el tipo es una oferta (ej., vehículo, pieza) [cite: 47]
-  final bool isRead; // Indica si el mensaje ha sido leído por el receptor
+  final String type; // Ej: 'text', 'image', 'vehicle_offer', 'part_offer', 'post_shared'
+  final String? relatedItemId; // ID del artículo si aplica
+  final bool isRead;
+  
+  // Nuevos campos para post compartido
+  final String? postImageUrl;     // URL de la imagen del post compartido
+  final String? postDescription;  // Descripción del post compartido
+  final String? postUserName;     // Usuario que compartió el post
 
   MessageModel({
     required this.senderId,
     required this.content,
     required this.timestamp,
-    this.type = 'text', // Valor por defecto
+    this.type = 'text',
     this.relatedItemId,
-    this.isRead = false, // Valor por defecto
+    this.isRead = false,
+    this.postImageUrl,
+    this.postDescription,
+    this.postUserName,
   });
 
-  // Factory constructor para crear un MessageModel desde un DocumentSnapshot de Firestore
   factory MessageModel.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    final data = doc.data() as Map<String, dynamic>;
     return MessageModel(
       senderId: data['senderId'] ?? '',
       content: data['content'] ?? '',
@@ -27,10 +34,12 @@ class MessageModel {
       type: data['type'] ?? 'text',
       relatedItemId: data['relatedItemId'],
       isRead: data['isRead'] ?? false,
+      postImageUrl: data['postImageUrl'],
+      postDescription: data['postDescription'],
+      postUserName: data['postUserName'],
     );
   }
 
-  // Método para convertir un MessageModel a un Map, útil para subir/actualizar en Firestore
   Map<String, dynamic> toFirestore() {
     return {
       'senderId': senderId,
@@ -39,6 +48,9 @@ class MessageModel {
       'type': type,
       'relatedItemId': relatedItemId,
       'isRead': isRead,
+      'postImageUrl': postImageUrl,
+      'postDescription': postDescription,
+      'postUserName': postUserName,
     };
   }
 }
