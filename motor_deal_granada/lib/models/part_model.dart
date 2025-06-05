@@ -95,4 +95,7 @@ class PartModel {
       isSold: isSold ?? this.isSold,
     );
   }
+  double getTotalWithCommission(double commissionPercentage) {
+    return price + (price * commissionPercentage / 100);
+  }
 }

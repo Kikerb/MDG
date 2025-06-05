@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../models/part_model.dart';
 import '../../widgets/bottom_navigation_bar.dart';
 import '../../repository/part_repository.dart';
 import 'create_part_screen.dart';
+import 'part_detail_screen.dart';
 
 class MarketScreen extends StatefulWidget {
   const MarketScreen({super.key});
@@ -23,6 +23,7 @@ class _MarketScreenState extends State<MarketScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
+        automaticallyImplyLeading: false, // 👈 Esto oculta el botón de atrás
         title: const Text(
           'Mercado',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -51,16 +52,20 @@ class _MarketScreenState extends State<MarketScreen> {
 
           if (snapshot.hasError) {
             return const Center(
-              child: Text('Error al cargar los productos',
-                  style: TextStyle(color: Colors.white)),
+              child: Text(
+                'Error al cargar los productos',
+                style: TextStyle(color: Colors.white),
+              ),
             );
           }
 
           final parts = snapshot.data ?? [];
           if (parts.isEmpty) {
             return const Center(
-              child: Text('No hay piezas disponibles aún.',
-                  style: TextStyle(color: Colors.white70)),
+              child: Text(
+                'No hay piezas disponibles aún.',
+                style: TextStyle(color: Colors.white70),
+              ),
             );
           }
 
@@ -79,38 +84,57 @@ class _MarketScreenState extends State<MarketScreen> {
                   contentPadding: const EdgeInsets.all(12),
                   leading: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: part.imageUrl.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: part.imageUrl,
-                            width: 60,
-                            height: 60,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) =>
-                                const CircularProgressIndicator(strokeWidth: 2),
-                            errorWidget: (context, url, error) =>
-                                const Icon(Icons.error, color: Colors.red),
-                          )
-                        : Container(
-                            width: 60,
-                            height: 60,
-                            color: Colors.grey[700],
-                            child: const Icon(Icons.image_not_supported,
-                                color: Colors.white54),
-                          ),
+                    child:
+                        part.imageUrl.isNotEmpty
+                            ? CachedNetworkImage(
+                              imageUrl: part.imageUrl,
+                              width: 60,
+                              height: 60,
+                              fit: BoxFit.cover,
+                              placeholder:
+                                  (context, url) =>
+                                      const CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                              errorWidget:
+                                  (context, url, error) => const Icon(
+                                    Icons.error,
+                                    color: Colors.red,
+                                  ),
+                            )
+                            : Container(
+                              width: 60,
+                              height: 60,
+                              color: Colors.grey[700],
+                              child: const Icon(
+                                Icons.image_not_supported,
+                                color: Colors.white54,
+                              ),
+                            ),
                   ),
                   title: Text(
                     part.partName,
                     style: const TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold),
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   subtitle: Text(
-                    '${part.price.toStringAsFixed(2)} ${part.currency} - ${part.condition}',
+                    '${part.price.toStringAsFixed(2)} ${part.currency} + comisión = ${part.getTotalWithCommission(10).toStringAsFixed(2)} ${part.currency}',
                     style: const TextStyle(color: Colors.white70),
                   ),
-                  trailing: const Icon(Icons.arrow_forward_ios,
-                      color: Colors.white30, size: 16),
+                  trailing: const Icon(
+                    Icons.arrow_forward_ios,
+                    color: Colors.white30,
+                    size: 16,
+                  ),
                   onTap: () {
-                    // Aquí podrías abrir una pantalla de detalles si lo deseas
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PartDetailScreen(part: part),
+                      ),
+                    );
                   },
                 ),
               );
