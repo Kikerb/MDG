@@ -34,7 +34,6 @@ class _ChatScreenState extends State<ChatScreen> {
   String _chatDisplayName = 'Cargando...';
   String _chatDisplayImageUrl = 'https://i.imgur.com/BoN9kdC.png';
   bool _isGroupChat = false;
-
   bool _favoriteDesign = false;
 
   @override
@@ -125,7 +124,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
           setState(() {
             _chatDisplayName = displayUserName ?? 'Usuario';
-            _chatDisplayImageUrl = displayImageUrl ?? 'https://i.imgur.com/BoN9kdC.png';
+            _chatDisplayImageUrl =
+                displayImageUrl ?? 'https://i.imgur.com/BoN9kdC.png';
           });
         }
       }
@@ -166,6 +166,43 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Future<void> _confirmLeaveGroup() async {
+    final shouldLeave = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Salir del grupo'),
+        content: const Text('¿Estás seguro de que deseas salir del grupo?'),
+        actions: [
+          TextButton(
+            child: const Text('Cancelar'),
+            onPressed: () => Navigator.pop(context, false),
+          ),
+          TextButton(
+            child: const Text('Salir'),
+            onPressed: () => Navigator.pop(context, true),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLeave != true || currentUser == null) return;
+
+    try {
+      final chatDocRef =
+          FirebaseFirestore.instance.collection('messages').doc(widget.chatId);
+
+      await chatDocRef.update({
+        'participants': FieldValue.arrayRemove([currentUser!.uid]),
+      });
+
+      Navigator.pop(context); // Salir del chat
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al salir del grupo: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bgColor = _favoriteDesign ? const Color(0xFF1A0033) : Colors.black;
@@ -193,6 +230,12 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
         actions: [
+          if (_isGroupChat)
+            IconButton(
+              icon: Icon(Icons.exit_to_app, color: iconColor),
+              tooltip: 'Salir del grupo',
+              onPressed: _confirmLeaveGroup,
+            ),
           IconButton(
             icon: Icon(
               _favoriteDesign ? Icons.brightness_3 : Icons.brightness_5,
