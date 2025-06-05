@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../widgets/bottom_navigation_bar.dart';
-import '../../models/part_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'create_part_screen.dart'; // Importa la pantalla de creación
+
+import '../../models/part_model.dart';
+import '../../widgets/bottom_navigation_bar.dart';
+import '../../repository/part_repository.dart';
+import 'create_part_screen.dart';
 
 class MarketScreen extends StatefulWidget {
   const MarketScreen({super.key});
@@ -14,18 +16,7 @@ class MarketScreen extends StatefulWidget {
 
 class _MarketScreenState extends State<MarketScreen> {
   int _currentIndex = 3;
-
-  Stream<List<PartModel>> getPartsStream() {
-    return FirebaseFirestore.instance
-        .collection('parts')
-        .where('isSold', isEqualTo: false)
-        .orderBy('listedAt', descending: true)
-        .snapshots()
-        .map(
-          (snapshot) =>
-              snapshot.docs.map((doc) => PartModel.fromFirestore(doc)).toList(),
-        );
-  }
+  final PartRepository _partRepository = PartRepository();
 
   @override
   Widget build(BuildContext context) {
@@ -50,28 +41,26 @@ class _MarketScreenState extends State<MarketScreen> {
         centerTitle: true,
       ),
       body: StreamBuilder<List<PartModel>>(
-        stream: getPartsStream(),
+        stream: _partRepository.fetchAvailablePartsStream(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
               child: CircularProgressIndicator(color: Colors.purpleAccent),
             );
           }
+
           if (snapshot.hasError) {
             return const Center(
-              child: Text(
-                'Error al cargar los productos',
-                style: TextStyle(color: Colors.white),
-              ),
+              child: Text('Error al cargar los productos',
+                  style: TextStyle(color: Colors.white)),
             );
           }
+
           final parts = snapshot.data ?? [];
           if (parts.isEmpty) {
             return const Center(
-              child: Text(
-                'No hay piezas disponibles aún.',
-                style: TextStyle(color: Colors.white70),
-              ),
+              child: Text('No hay piezas disponibles aún.',
+                  style: TextStyle(color: Colors.white70)),
             );
           }
 
@@ -90,37 +79,38 @@ class _MarketScreenState extends State<MarketScreen> {
                   contentPadding: const EdgeInsets.all(12),
                   leading: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: CachedNetworkImage(
-                      imageUrl: part.imageUrl,
-                      width: 60,
-                      height: 60,
-                      fit: BoxFit.cover,
-                      placeholder:
-                          (context, url) =>
-                              const CircularProgressIndicator(strokeWidth: 2),
-                      errorWidget:
-                          (context, url, error) =>
-                              const Icon(Icons.error, color: Colors.red),
-                    ),
+                    child: part.imageUrl.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: part.imageUrl,
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) =>
+                                const CircularProgressIndicator(strokeWidth: 2),
+                            errorWidget: (context, url, error) =>
+                                const Icon(Icons.error, color: Colors.red),
+                          )
+                        : Container(
+                            width: 60,
+                            height: 60,
+                            color: Colors.grey[700],
+                            child: const Icon(Icons.image_not_supported,
+                                color: Colors.white54),
+                          ),
                   ),
                   title: Text(
                     part.partName,
                     style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
+                        color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(
                     '${part.price.toStringAsFixed(2)} ${part.currency} - ${part.condition}',
                     style: const TextStyle(color: Colors.white70),
                   ),
-                  trailing: const Icon(
-                    Icons.arrow_forward_ios,
-                    color: Colors.white30,
-                    size: 16,
-                  ),
+                  trailing: const Icon(Icons.arrow_forward_ios,
+                      color: Colors.white30, size: 16),
                   onTap: () {
-                    // Navegación a detalle si se desea
+                    // Aquí podrías abrir una pantalla de detalles si lo deseas
                   },
                 ),
               );
@@ -136,12 +126,9 @@ class _MarketScreenState extends State<MarketScreen> {
           );
 
           if (result == true) {
-            setState(
-              () {},
-            ); // Esto forzará que el StreamBuilder vuelva a construir
+            setState(() {}); // reconstruye la UI si se añadió una pieza
           }
         },
-
         backgroundColor: Colors.purple,
         child: const Icon(Icons.add, size: 30),
       ),
