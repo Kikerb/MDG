@@ -48,6 +48,7 @@ class PartModel {
     );
   }
 
+
   // Método para convertir un PartModel a un Map, útil para subir/actualizar en Firestore
   Map<String, dynamic> toFirestore() {
     return {

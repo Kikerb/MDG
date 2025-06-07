@@ -5,7 +5,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import '/main.dart'; // Asegúrate de tener scrollScreenRoute definido aquí
+import '/main.dart';
 import '/models/vehicle_model.dart';
 import '/models/post_model.dart';
 import 'select_vehicle_screen.dart';

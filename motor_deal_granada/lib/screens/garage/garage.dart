@@ -5,15 +5,18 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 
-import '../../main.dart'; // Importa main.dart para las rutas nombradas
-import '../../widgets/bottom_navigation_bar.dart'; // Importa tu barra de navegación
+import '../../main.dart'; // Asegúrate de que la ruta es correcta
+import '../../widgets/bottom_navigation_bar.dart'; // Tu barra de navegación
 
-import '../setings/ConfiguracionUser.dart'; // Ajusta la ruta si es necesario
-import '../../models/vehicle_model.dart'; // Ajusta la ruta a tu VehicleModel
-import 'vehicle/addvehiclescreen.dart'; // La pantalla para añadir vehículos
-import 'vehicle/vehicle_detail_screen.dart'; // La pantalla de detalles del vehículo
+import '../market/part_detail_screen.dart';
+import '../setings/ConfiguracionUser.dart'; // Pantalla de configuración del usuario
+import '../../models/vehicle_model.dart'; // Clase VehicleModel
+import 'vehicle/addvehiclescreen.dart'; // Pantalla añadir vehículo
+import 'vehicle/vehicle_detail_screen.dart'; // Pantalla de detalles del vehículo
 
-// Eliminamos PrivateGarageScreen y fusionamos su contenido aquí.
+// Import del PartRepository y PartModel
+import '../../repository/part_repository.dart';
+import '../../models/part_model.dart';
 
 class GarageScreen extends StatefulWidget {
   const GarageScreen({Key? key}) : super(key: key);
@@ -30,18 +33,20 @@ class _GarageScreenState extends State<GarageScreen>
   String _profileImageUrl =
       'https://i.imgur.com/BoN9kdC.png'; // Imagen de perfil por defecto
 
-  // Define el número máximo de plazas de garaje
+  // Número máximo de plazas en el garaje
   final int _maxGarageSlots = 3;
 
-  // Usamos _currentIndex para el CustomBottomNavigationBar.
-  // Ajusta el índice inicial si tu "Garaje" no es el tercero (índice 2).
-  int _currentIndex = 4; // Índice para la barra de navegación: 'Garage'
+  // Índice para la barra de navegación (aquí "Garage" es el índice 4)
+  int _currentIndex = 4;
 
-  // Variable para la posición del tap para el menú de perfil
+  // Posición del tap en la imagen de perfil
   Offset? tapPosition;
 
-  // TabController para las nuevas pestañas
+  // TabController para las pestañas (Vehículos, Piezas, Favoritos)
   late TabController _tabController;
+
+  // Instancia del PartRepository para gestionar piezas
+  final PartRepository _partRepository = PartRepository();
 
   @override
   void initState() {
@@ -49,22 +54,19 @@ class _GarageScreenState extends State<GarageScreen>
     _currentUser = _auth.currentUser;
     _loadUserProfile();
 
-    // Escuchar cambios de autenticación
+    // Escucha los cambios en la autenticación para actualizar el usuario
     _auth.authStateChanges().listen((User? user) {
       if (user != null && user != _currentUser) {
         setState(() {
           _currentUser = user;
-          _loadUserProfile(); // Cargar el perfil del nuevo usuario
+          _loadUserProfile();
         });
       } else if (user == null && _currentUser != null) {
-        // El usuario ha cerrado sesión
         setState(() {
           _currentUser = null;
-          _profileImageUrl =
-              'https://i.imgur.com/BoN9kdC.png'; // Restablecer a la imagen por defecto
+          _profileImageUrl = 'https://i.imgur.com/BoN9kdC.png';
         });
         if (mounted) {
-          // Redirige a la pantalla de login si el usuario cierra sesión
           Navigator.of(context).pushReplacementNamed(loginScreenRoute);
         }
       }
@@ -76,7 +78,7 @@ class _GarageScreenState extends State<GarageScreen>
 
   @override
   void dispose() {
-    _tabController.dispose(); // Es importante liberar el TabController
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -86,8 +88,7 @@ class _GarageScreenState extends State<GarageScreen>
           await _firestore.collection('users').doc(_currentUser!.uid).get();
       if (doc.exists) {
         setState(() {
-          _profileImageUrl =
-              doc.data()?['profileImageUrl'] as String? ??
+          _profileImageUrl = doc.data()?['profileImageUrl'] as String? ??
               'https://i.imgur.com/BoN9kdC.png';
         });
       }
@@ -98,9 +99,8 @@ class _GarageScreenState extends State<GarageScreen>
     try {
       String fileName =
           '${_currentUser!.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      Reference storageRef = FirebaseStorage.instance.ref().child(
-        'profile_images/$fileName',
-      );
+      Reference storageRef =
+          FirebaseStorage.instance.ref().child('profile_images/$fileName');
       UploadTask uploadTask = storageRef.putFile(imageFile);
       TaskSnapshot snapshot = await uploadTask;
       return await snapshot.ref.getDownloadURL();
@@ -113,7 +113,6 @@ class _GarageScreenState extends State<GarageScreen>
   Future<void> _pickImage(ImageSource source) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: source);
-
     if (pickedFile != null) {
       File imageFile = File(pickedFile.path);
       try {
@@ -147,7 +146,7 @@ class _GarageScreenState extends State<GarageScreen>
       context: context,
       builder: (BuildContext context) {
         return Container(
-          color: Colors.black, // Fondo negro para el modal
+          color: Colors.black,
           child: Wrap(
             children: <Widget>[
               ListTile(
@@ -185,15 +184,15 @@ class _GarageScreenState extends State<GarageScreen>
     showMenu(
       context: context,
       position: RelativeRect.fromRect(
-        position & const Size(40, 40), // Tamaño del área del botón
-        Offset.zero & MediaQuery.of(context).size, // Tamaño de toda la pantalla
+        position & const Size(40, 40),
+        Offset.zero & MediaQuery.of(context).size,
       ),
       items: <PopupMenuEntry>[
         PopupMenuItem(
           value: 'cambiar_foto',
           child: const Text(
             'Cambiar foto de perfil',
-            style: TextStyle(color: Colors.white), // Color del texto
+            style: TextStyle(color: Colors.white),
           ),
           onTap: () {
             Future.delayed(const Duration(milliseconds: 100), () {
@@ -205,7 +204,7 @@ class _GarageScreenState extends State<GarageScreen>
           value: 'cerrar_sesion',
           child: const Text(
             'Cerrar Sesión',
-            style: TextStyle(color: Colors.white), // Color del texto
+            style: TextStyle(color: Colors.white),
           ),
           onTap: () async {
             Future.delayed(const Duration(milliseconds: 100), () async {
@@ -217,7 +216,7 @@ class _GarageScreenState extends State<GarageScreen>
           },
         ),
       ],
-      color: Colors.black, // Color de fondo del menú
+      color: Colors.black,
     );
   }
 
@@ -227,7 +226,8 @@ class _GarageScreenState extends State<GarageScreen>
       return Scaffold(
         backgroundColor: Colors.black,
         appBar: AppBar(
-          title: const Text('Mi Garaje', style: TextStyle(color: Colors.white)),
+          title:
+              const Text('Mi Garaje', style: TextStyle(color: Colors.white)),
           backgroundColor: Colors.black,
           flexibleSpace: Container(
             decoration: const BoxDecoration(
@@ -252,8 +252,6 @@ class _GarageScreenState extends State<GarageScreen>
             setState(() {
               _currentIndex = index;
             });
-            // La navegación real debe ocurrir aquí o en CustomBottomNavigationBar
-            // Ejemplo: if (index == 0) Navigator.pushNamed(context, homeRoute);
           },
         ),
       );
@@ -262,10 +260,9 @@ class _GarageScreenState extends State<GarageScreen>
     final String userId = _currentUser!.uid;
 
     return Scaffold(
-      backgroundColor: Colors.black, // Fondo principal oscuro
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor:
-            Colors.transparent, // Transparente para que se vea el gradiente
+        backgroundColor: Colors.transparent,
         elevation: 0,
         title: const Text(
           'Mi Garaje',
@@ -302,10 +299,10 @@ class _GarageScreenState extends State<GarageScreen>
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const SizedBox(height: 40),
-            // HEADER DE PERFIL (como en la imagen)
+            // HEADER DE PERFIL
             Row(
               children: [
-                // Imagen de perfil
+                // Imagen de perfil con menú al pulsar
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0),
                   child: GestureDetector(
@@ -318,8 +315,7 @@ class _GarageScreenState extends State<GarageScreen>
                       }
                     },
                     child: CircleAvatar(
-                      radius:
-                          50, // Ajusta el radio para que coincida con la imagen
+                      radius: 50,
                       backgroundColor: Colors.grey[800],
                       backgroundImage: NetworkImage(_profileImageUrl),
                       child: Align(
@@ -338,17 +334,16 @@ class _GarageScreenState extends State<GarageScreen>
                   ),
                 ),
                 const SizedBox(width: 16),
-                // Nombre de usuario y contadores
+                // Nombre del usuario y contadores
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       StreamBuilder<DocumentSnapshot>(
-                        stream:
-                            _firestore
-                                .collection('users')
-                                .doc(userId)
-                                .snapshots(),
+                        stream: _firestore
+                            .collection('users')
+                            .doc(userId)
+                            .snapshots(),
                         builder: (context, snapshot) {
                           if (snapshot.connectionState ==
                               ConnectionState.waiting) {
@@ -360,35 +355,32 @@ class _GarageScreenState extends State<GarageScreen>
                           if (snapshot.hasError) {
                             return Text(
                               'Error: ${snapshot.error}',
-                              style: const TextStyle(color: Colors.redAccent),
+                              style:
+                                  const TextStyle(color: Colors.redAccent),
                             );
                           }
-                          if (!snapshot.hasData || !snapshot.data!.exists) {
+                          if (!snapshot.hasData ||
+                              !snapshot.data!.exists) {
                             return const Text(
                               'Usuario',
                               style: TextStyle(color: Colors.white),
                             );
                           }
-
                           final userData =
                               snapshot.data!.data() as Map<String, dynamic>;
-                          final String userName =
-                              userData['name'] ??
+                          final String userName = userData['name'] ??
                               userData['email'] ??
                               'Usuario';
-
                           return Row(
                             children: [
                               Text(
                                 userName,
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize:
-                                      22, // Tamaño más grande para el nombre
+                                  fontSize: 22,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              // Botón de edición de perfil
                               IconButton(
                                 icon: const Icon(
                                   Icons.edit,
@@ -399,9 +391,8 @@ class _GarageScreenState extends State<GarageScreen>
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder:
-                                          (context) =>
-                                              const ConfiguracionUser(),
+                                      builder: (context) =>
+                                          const ConfiguracionUser(),
                                     ),
                                   );
                                 },
@@ -413,11 +404,10 @@ class _GarageScreenState extends State<GarageScreen>
                       const SizedBox(height: 10),
                       // Contadores de seguidores, seguidos y vehículos
                       StreamBuilder<DocumentSnapshot>(
-                        stream:
-                            FirebaseFirestore.instance
-                                .collection('users')
-                                .doc(userId)
-                                .snapshots(),
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(userId)
+                            .snapshots(),
                         builder: (context, userSnapshot) {
                           if (userSnapshot.connectionState ==
                               ConnectionState.waiting) {
@@ -435,11 +425,10 @@ class _GarageScreenState extends State<GarageScreen>
                           if (!userSnapshot.hasData ||
                               !userSnapshot.data!.exists) {
                             return const Text(
-                              'Seguidores: 0 Seguidos: 0 Vehículos: 0',
+                              'Seguidores: 0  Seguidos: 0  Vehículos: 0',
                               style: TextStyle(color: Colors.white70),
                             );
                           }
-
                           final userDoc = userSnapshot.data!;
                           final userData =
                               userDoc.data() as Map<String, dynamic>;
@@ -447,13 +436,11 @@ class _GarageScreenState extends State<GarageScreen>
                               (userData['followers'] as List?)?.length ?? 0;
                           final int following =
                               (userData['following'] as List?)?.length ?? 0;
-
                           return StreamBuilder<QuerySnapshot>(
-                            stream:
-                                FirebaseFirestore.instance
-                                    .collection('vehicles')
-                                    .where('userId', isEqualTo: userId)
-                                    .snapshots(),
+                            stream: FirebaseFirestore.instance
+                                .collection('vehicles')
+                                .where('userId', isEqualTo: userId)
+                                .snapshots(),
                             builder: (context, vehicleSnapshot) {
                               if (vehicleSnapshot.connectionState ==
                                   ConnectionState.waiting) {
@@ -470,7 +457,6 @@ class _GarageScreenState extends State<GarageScreen>
                               }
                               final int totalVehicles =
                                   vehicleSnapshot.data?.docs.length ?? 0;
-
                               return Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceAround,
@@ -490,44 +476,45 @@ class _GarageScreenState extends State<GarageScreen>
               ],
             ),
             const SizedBox(height: 24),
-            // Barra de pestañas (Vehículos, Piezas, Favoritos)
+            // Pestañas: Vehículos, Piezas, Favoritos
             Container(
-              color: Colors.black, // Fondo negro para la barra de pestañas
+              color: Colors.black,
               child: TabBar(
                 controller: _tabController,
-                indicatorColor: Colors.purpleAccent, // Color del indicador
-                labelColor:
-                    Colors.purpleAccent, // Color de la pestaña seleccionada
-                unselectedLabelColor:
-                    Colors.white70, // Color de las pestañas no seleccionadas
+                indicatorColor: Colors.purpleAccent,
+                labelColor: Colors.purpleAccent,
+                unselectedLabelColor: Colors.white70,
                 tabs: const [
                   Tab(
                     icon: Icon(Icons.directions_car, size: 28),
                     text: 'Vehículos',
                   ),
-                  Tab(icon: Icon(Icons.build, size: 28), text: 'Piezas'),
-                  Tab(icon: Icon(Icons.star, size: 28), text: 'Favoritos'),
+                  Tab(
+                    icon: Icon(Icons.build, size: 28),
+                    text: 'Piezas',
+                  ),
+                  Tab(
+                    icon: Icon(Icons.star, size: 28),
+                    text: 'Favoritos',
+                  ),
                 ],
               ),
             ),
-            // Contenido de las pestañas
             SizedBox(
-              height:
-                  MediaQuery.of(context).size.height *
-                  0.6, // Ajusta la altura según sea necesario
+              height: MediaQuery.of(context).size.height * 0.6,
               child: TabBarView(
                 controller: _tabController,
                 children: [
                   // Pestaña de Vehículos
                   StreamBuilder<QuerySnapshot>(
-                    stream:
-                        FirebaseFirestore.instance
-                            .collection('vehicles')
-                            .where('userId', isEqualTo: userId)
-                            .orderBy('addedAt', descending: true)
-                            .snapshots(),
+                    stream: FirebaseFirestore.instance
+                        .collection('vehicles')
+                        .where('userId', isEqualTo: userId)
+                        .orderBy('addedAt', descending: true)
+                        .snapshots(),
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
+                      if (snapshot.connectionState ==
+                          ConnectionState.waiting) {
                         return const Center(
                           child: CircularProgressIndicator(
                             color: Colors.purpleAccent,
@@ -545,35 +532,62 @@ class _GarageScreenState extends State<GarageScreen>
                           ),
                         );
                       }
-
-                      final List<VehicleModel> vehicles =
-                          snapshot.data!.docs
-                              .map((doc) => VehicleModel.fromFirestore(doc))
-                              .toList();
-
-                      // Construir la cuadrícula de garaje con los vehículos y las plazas vacías
+                      final List<VehicleModel> vehicles = snapshot.data!.docs
+                          .map((doc) => VehicleModel.fromFirestore(doc))
+                          .toList();
                       return _buildGarageGrid(context, vehicles);
                     },
                   ),
-                  // Pestaña de Piezas (Marcador de posición)
-                  const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.construction,
-                          size: 80,
-                          color: Colors.white54,
+                  // Pestaña de Piezas: se muestran las piezas publicadas por el usuario
+                  FutureBuilder<List<PartModel>>(
+                    future: _partRepository.fetchPartsByUser(userId),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.purpleAccent,
+                          ),
+                        );
+                      }
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Text(
+                            'Error al cargar piezas: ${snapshot.error}',
+                            style: const TextStyle(
+                              color: Colors.redAccent,
+                              fontSize: 16,
+                            ),
+                          ),
+                        );
+                      }
+                      final List<PartModel> parts = snapshot.data ?? [];
+                      if (parts.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            'No tienes piezas subidas.',
+                            style: TextStyle(
+                                color: Colors.white70, fontSize: 18),
+                          ),
+                        );
+                      }
+                      return GridView.builder(
+                        padding: const EdgeInsets.all(16.0),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 10.0,
+                          mainAxisSpacing: 10.0,
+                          childAspectRatio: 0.8,
                         ),
-                        SizedBox(height: 20),
-                        Text(
-                          'Aquí se mostrarán tus piezas.',
-                          style: TextStyle(color: Colors.white70, fontSize: 18),
-                        ),
-                      ],
-                    ),
+                        itemCount: parts.length,
+                        itemBuilder: (context, index) {
+                          return _buildPartCard(context, parts[index]);
+                        },
+                      );
+                    },
                   ),
-                  // Pestaña de Favoritos (Marcador de posición)
+                  // Pestaña de Favoritos (marcador de posición)
                   const Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -586,7 +600,8 @@ class _GarageScreenState extends State<GarageScreen>
                         SizedBox(height: 20),
                         Text(
                           'Aquí se mostrarán tus elementos favoritos.',
-                          style: TextStyle(color: Colors.white70, fontSize: 18),
+                          style:
+                              TextStyle(color: Colors.white70, fontSize: 18),
                         ),
                       ],
                     ),
@@ -597,19 +612,19 @@ class _GarageScreenState extends State<GarageScreen>
           ],
         ),
       ),
-      // Integración del CustomBottomNavigationBar
       bottomNavigationBar: CustomBottomNavigationBar(
         currentIndex: _currentIndex,
         onItemSelected: (index) {
           setState(() {
             _currentIndex = index;
           });
+          // Aquí puedes implementar la navegación según el índice seleccionado
         },
       ),
     );
   }
 
-  // Widget para construir la columna de estadísticas (seguidores, seguidos, vehículos)
+  // Widget para la columna de estadísticas (seguidores, seguidos, vehículos)
   Widget _buildStatColumn(String label, int count) {
     return Column(
       children: [
@@ -629,41 +644,32 @@ class _GarageScreenState extends State<GarageScreen>
     );
   }
 
-  // Widget para construir la cuadrícula del garaje (vehículos + plazas vacías)
+  // Widget para construir la cuadrícula del garaje (vehículos y plazas vacías)
   Widget _buildGarageGrid(BuildContext context, List<VehicleModel> vehicles) {
     return GridView.builder(
-      shrinkWrap:
-          true, // Importante para que el GridView no ocupe todo el espacio y permita el SingleChildScrollView
-      physics:
-          const NeverScrollableScrollPhysics(), // Deshabilita el scroll interno del GridView
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16.0),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3, // 3 columnas por fila
-        crossAxisSpacing: 10.0, // Espacio horizontal entre tarjetas
-        mainAxisSpacing: 10.0, // Espacio vertical entre tarjetas
-        childAspectRatio:
-            0.7, // Ajusta la relación de aspecto de las tarjetas para que sean más pequeñas
+        crossAxisCount: 3,
+        crossAxisSpacing: 10.0,
+        mainAxisSpacing: 10.0,
+        childAspectRatio: 0.7,
       ),
-      itemCount:
-          vehicles.length > _maxGarageSlots
-              ? vehicles.length
-              : _maxGarageSlots, // Muestra siempre el número máximo de plazas o más si hay más vehículos
+      itemCount: vehicles.length > _maxGarageSlots
+          ? vehicles.length
+          : _maxGarageSlots,
       itemBuilder: (context, index) {
-        // Intentar encontrar un vehículo para esta "plaza"
         VehicleModel? vehicleInSlot;
         if (index < vehicles.length) {
           vehicleInSlot = vehicles[index];
         }
-
         if (vehicleInSlot != null) {
-          // Si hay un vehículo en esta plaza, muestra su información
           return _buildVehicleCard(context, vehicleInSlot);
         } else {
-          // Si la plaza está vacía y estamos dentro del límite de _maxGarageSlots, muestra un botón para añadir un vehículo
           if (index < _maxGarageSlots) {
             return _buildAddVehicleButton(context, index);
           } else {
-            // No renderizar nada si hay más vehículos que _maxGarageSlots y no hay más plazas para añadir
             return Container();
           }
         }
@@ -671,27 +677,23 @@ class _GarageScreenState extends State<GarageScreen>
     );
   }
 
-  // Widget para la tarjeta de un vehículo en el garaje
+  // Widget para la tarjeta de un vehículo
   Widget _buildVehicleCard(BuildContext context, VehicleModel vehicle) {
-    // Preparar el texto del precio y estado para la tarjeta
     String displayPrice = 'N/A';
     if (vehicle.currentStatus == 'En Venta' && vehicle.price != null) {
-      displayPrice =
-          '${vehicle.price!.toStringAsFixed(0)} €'; // Asume euros, ajusta si es necesario
+      displayPrice = '${vehicle.price!.toStringAsFixed(0)} €';
     } else if (vehicle.currentStatus == 'Escucha Ofertas') {
       displayPrice = 'Escucha Ofertas';
     } else {
-      displayPrice =
-          vehicle.currentStatus; // Mostrar el estado si no es "En Venta"
+      displayPrice = vehicle.currentStatus;
     }
 
     return Card(
-      color: Colors.grey[900], // Fondo oscuro para la tarjeta
+      color: Colors.grey[900],
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       elevation: 5,
       child: InkWell(
         onTap: () {
-          // Al tocar el vehículo, navega a la pantalla de detalles
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -716,11 +718,10 @@ class _GarageScreenState extends State<GarageScreen>
                     if (loadingProgress == null) return child;
                     return Center(
                       child: CircularProgressIndicator(
-                        value:
-                            loadingProgress.expectedTotalBytes != null
-                                ? loadingProgress.cumulativeBytesLoaded /
-                                    loadingProgress.expectedTotalBytes!
-                                : null,
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                                loadingProgress.expectedTotalBytes!
+                            : null,
                         color: Colors.purpleAccent,
                       ),
                     );
@@ -759,10 +760,9 @@ class _GarageScreenState extends State<GarageScreen>
                   Text(
                     displayPrice,
                     style: TextStyle(
-                      color:
-                          vehicle.currentStatus == 'Vendido'
-                              ? Colors.redAccent
-                              : Colors.lightGreenAccent,
+                      color: vehicle.currentStatus == 'Vendido'
+                          ? Colors.redAccent
+                          : Colors.lightGreenAccent,
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
@@ -790,16 +790,16 @@ class _GarageScreenState extends State<GarageScreen>
         side: const BorderSide(
           color: Colors.purpleAccent,
           width: 2,
-        ), // Borde distintivo
+        ),
       ),
       elevation: 5,
       child: InkWell(
-        // Para el efecto ripple al tocar
         onTap: () async {
-          // Navegar a la pantalla de añadir vehículo y esperar un resultado
           await Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const AddVehicleScreen()),
+            MaterialPageRoute(
+              builder: (context) => const AddVehicleScreen(),
+            ),
           );
         },
         borderRadius: BorderRadius.circular(12.0),
@@ -825,6 +825,82 @@ class _GarageScreenState extends State<GarageScreen>
             Text(
               'Plaza libre #${slotIndex + 1}',
               style: const TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Widget para construir la tarjeta de una pieza usando PartModel
+  Widget _buildPartCard(BuildContext context, PartModel part) {
+    return Card(
+      color: Colors.grey[900],
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.0),
+      ),
+      elevation: 5,
+      child: InkWell(
+        onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PartDetailScreen(part: part),
+                      ),
+                    );
+                  },
+        borderRadius: BorderRadius.circular(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(12.0)),
+                child: Image.network(
+                  part.imageUrl,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Center(
+                      child: CircularProgressIndicator(
+                        value:
+                            loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                                : null,
+                        color: Colors.purpleAccent,
+                      ),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: Colors.grey[700],
+                      child: const Center(
+                        child: Icon(
+                          Icons.broken_image,
+                          color: Colors.white54,
+                          size: 50,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                part.partName,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
