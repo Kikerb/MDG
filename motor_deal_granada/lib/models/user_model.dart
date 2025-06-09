@@ -23,7 +23,7 @@ class UserModel {
     required this.createdAt,
     this.followersCount = 0,
     this.followingCount = 0,
-    this.garageSlots = 5, // Por defecto, 5 plazas
+    this.garageSlots = 3, // Por defecto, 3 plazas
     this.garageSlotsUsed = 0,
     this.isPremiumUser = false,
     required this.lastActive,
@@ -42,7 +42,7 @@ class UserModel {
       createdAt: data['createdAt'] ?? Timestamp.now(), // Por defecto, la hora actual si no existe
       followersCount: data['followersCount'] ?? 0,
       followingCount: data['followingCount'] ?? 0,
-      garageSlots: data['garageSlots'] ?? 5, // Por defecto 5 si no se especifica
+      garageSlots: data['garageSlots'] ?? 3, // Por defecto 5 si no se especifica
       garageSlotsUsed: data['garageSlotsUsed'] ?? 0,
       isPremiumUser: data['isPremiumUser'] ?? false,
       lastActive: data['lastActive'] ?? Timestamp.now(), // Por defecto, la hora actual si no existe

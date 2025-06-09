@@ -4,16 +4,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
-
 import '../../main.dart'; // Asegúrate de que la ruta es correcta
 import '../../widgets/bottom_navigation_bar.dart'; // Tu barra de navegación
-
 import '../market/part_detail_screen.dart';
 import '../setings/ConfiguracionUser.dart'; // Pantalla de configuración del usuario
 import '../../models/vehicle_model.dart'; // Clase VehicleModel
 import 'vehicle/addvehiclescreen.dart'; // Pantalla añadir vehículo
 import 'vehicle/vehicle_detail_screen.dart'; // Pantalla de detalles del vehículo
-
+import '../../models/user_model.dart';
 // Import del PartRepository y PartModel
 import '../../repository/part_repository.dart';
 import '../../models/part_model.dart';
@@ -32,9 +30,6 @@ class _GarageScreenState extends State<GarageScreen>
   User? _currentUser;
   String _profileImageUrl =
       'https://i.imgur.com/BoN9kdC.png'; // Imagen de perfil por defecto
-
-  // Número máximo de plazas en el garaje
-  final int _maxGarageSlots = 3;
 
   // Índice para la barra de navegación (aquí "Garage" es el índice 4)
   int _currentIndex = 4;
@@ -88,7 +83,8 @@ class _GarageScreenState extends State<GarageScreen>
           await _firestore.collection('users').doc(_currentUser!.uid).get();
       if (doc.exists) {
         setState(() {
-          _profileImageUrl = doc.data()?['profileImageUrl'] as String? ??
+          _profileImageUrl =
+              doc.data()?['profileImageUrl'] as String? ??
               'https://i.imgur.com/BoN9kdC.png';
         });
       }
@@ -99,8 +95,9 @@ class _GarageScreenState extends State<GarageScreen>
     try {
       String fileName =
           '${_currentUser!.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      Reference storageRef =
-          FirebaseStorage.instance.ref().child('profile_images/$fileName');
+      Reference storageRef = FirebaseStorage.instance.ref().child(
+        'profile_images/$fileName',
+      );
       UploadTask uploadTask = storageRef.putFile(imageFile);
       TaskSnapshot snapshot = await uploadTask;
       return await snapshot.ref.getDownloadURL();
@@ -226,8 +223,7 @@ class _GarageScreenState extends State<GarageScreen>
       return Scaffold(
         backgroundColor: Colors.black,
         appBar: AppBar(
-          title:
-              const Text('Mi Garaje', style: TextStyle(color: Colors.white)),
+          title: const Text('Mi Garaje', style: TextStyle(color: Colors.white)),
           backgroundColor: Colors.black,
           flexibleSpace: Container(
             decoration: const BoxDecoration(
@@ -340,10 +336,11 @@ class _GarageScreenState extends State<GarageScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       StreamBuilder<DocumentSnapshot>(
-                        stream: _firestore
-                            .collection('users')
-                            .doc(userId)
-                            .snapshots(),
+                        stream:
+                            _firestore
+                                .collection('users')
+                                .doc(userId)
+                                .snapshots(),
                         builder: (context, snapshot) {
                           if (snapshot.connectionState ==
                               ConnectionState.waiting) {
@@ -355,12 +352,10 @@ class _GarageScreenState extends State<GarageScreen>
                           if (snapshot.hasError) {
                             return Text(
                               'Error: ${snapshot.error}',
-                              style:
-                                  const TextStyle(color: Colors.redAccent),
+                              style: const TextStyle(color: Colors.redAccent),
                             );
                           }
-                          if (!snapshot.hasData ||
-                              !snapshot.data!.exists) {
+                          if (!snapshot.hasData || !snapshot.data!.exists) {
                             return const Text(
                               'Usuario',
                               style: TextStyle(color: Colors.white),
@@ -368,7 +363,8 @@ class _GarageScreenState extends State<GarageScreen>
                           }
                           final userData =
                               snapshot.data!.data() as Map<String, dynamic>;
-                          final String userName = userData['name'] ??
+                          final String userName =
+                              userData['name'] ??
                               userData['email'] ??
                               'Usuario';
                           return Row(
@@ -391,8 +387,9 @@ class _GarageScreenState extends State<GarageScreen>
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) =>
-                                          const ConfiguracionUser(),
+                                      builder:
+                                          (context) =>
+                                              const ConfiguracionUser(),
                                     ),
                                   );
                                 },
@@ -404,10 +401,11 @@ class _GarageScreenState extends State<GarageScreen>
                       const SizedBox(height: 10),
                       // Contadores de seguidores, seguidos y vehículos
                       StreamBuilder<DocumentSnapshot>(
-                        stream: FirebaseFirestore.instance
-                            .collection('users')
-                            .doc(userId)
-                            .snapshots(),
+                        stream:
+                            FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(userId)
+                                .snapshots(),
                         builder: (context, userSnapshot) {
                           if (userSnapshot.connectionState ==
                               ConnectionState.waiting) {
@@ -437,10 +435,11 @@ class _GarageScreenState extends State<GarageScreen>
                           final int following =
                               (userData['following'] as List?)?.length ?? 0;
                           return StreamBuilder<QuerySnapshot>(
-                            stream: FirebaseFirestore.instance
-                                .collection('vehicles')
-                                .where('userId', isEqualTo: userId)
-                                .snapshots(),
+                            stream:
+                                FirebaseFirestore.instance
+                                    .collection('vehicles')
+                                    .where('userId', isEqualTo: userId)
+                                    .snapshots(),
                             builder: (context, vehicleSnapshot) {
                               if (vehicleSnapshot.connectionState ==
                                   ConnectionState.waiting) {
@@ -489,14 +488,8 @@ class _GarageScreenState extends State<GarageScreen>
                     icon: Icon(Icons.directions_car, size: 28),
                     text: 'Vehículos',
                   ),
-                  Tab(
-                    icon: Icon(Icons.build, size: 28),
-                    text: 'Piezas',
-                  ),
-                  Tab(
-                    icon: Icon(Icons.star, size: 28),
-                    text: 'Favoritos',
-                  ),
+                  Tab(icon: Icon(Icons.build, size: 28), text: 'Piezas'),
+                  Tab(icon: Icon(Icons.star, size: 28), text: 'Favoritos'),
                 ],
               ),
             ),
@@ -506,14 +499,14 @@ class _GarageScreenState extends State<GarageScreen>
                 controller: _tabController,
                 children: [
                   // Pestaña de Vehículos
-                  StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('vehicles')
-                        .where('userId', isEqualTo: userId)
-                        .orderBy('addedAt', descending: true)
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState ==
+                  StreamBuilder<DocumentSnapshot>(
+                    stream:
+                        FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(userId)
+                            .snapshots(),
+                    builder: (context, userSnapshot) {
+                      if (userSnapshot.connectionState ==
                           ConnectionState.waiting) {
                         return const Center(
                           child: CircularProgressIndicator(
@@ -521,29 +514,76 @@ class _GarageScreenState extends State<GarageScreen>
                           ),
                         );
                       }
-                      if (snapshot.hasError) {
+
+                      if (userSnapshot.hasError) {
                         return Center(
                           child: Text(
-                            'Error al cargar vehículos: ${snapshot.error}',
-                            style: const TextStyle(
-                              color: Colors.redAccent,
-                              fontSize: 16,
-                            ),
+                            'Error al cargar usuario: ${userSnapshot.error}',
+                            style: TextStyle(color: Colors.redAccent),
                           ),
                         );
                       }
-                      final List<VehicleModel> vehicles = snapshot.data!.docs
-                          .map((doc) => VehicleModel.fromFirestore(doc))
-                          .toList();
-                      return _buildGarageGrid(context, vehicles);
+
+                      if (!userSnapshot.hasData || !userSnapshot.data!.exists) {
+                        return const Center(
+                          child: Text(
+                            'Usuario no encontrado.',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        );
+                      }
+
+                      final userData =
+                          userSnapshot.data!.data() as Map<String, dynamic>;
+                      final int garageSlots =
+                          userData['garageSlots'] ??
+                          3; // Valor por defecto si no está en la BD
+
+                      return StreamBuilder<QuerySnapshot>(
+                        stream:
+                            FirebaseFirestore.instance
+                                .collection('vehicles')
+                                .where('userId', isEqualTo: userId)
+                                .orderBy('addedAt', descending: true)
+                                .snapshots(),
+                        builder: (context, vehicleSnapshot) {
+                          if (vehicleSnapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Center(
+                              child: CircularProgressIndicator(
+                                color: Colors.purpleAccent,
+                              ),
+                            );
+                          }
+
+                          if (vehicleSnapshot.hasError) {
+                            return Center(
+                              child: Text(
+                                'Error al cargar vehículos: ${vehicleSnapshot.error}',
+                                style: TextStyle(color: Colors.redAccent),
+                              ),
+                            );
+                          }
+
+                          final List<VehicleModel> vehicles =
+                              vehicleSnapshot.data!.docs
+                                  .map((doc) => VehicleModel.fromFirestore(doc))
+                                  .toList();
+
+                          return _buildGarageGrid(
+                            context,
+                            vehicles,
+                            garageSlots,
+                          );
+                        },
+                      );
                     },
                   ),
                   // Pestaña de Piezas: se muestran las piezas publicadas por el usuario
                   FutureBuilder<List<PartModel>>(
                     future: _partRepository.fetchPartsByUser(userId),
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState ==
-                          ConnectionState.waiting) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(
                           child: CircularProgressIndicator(
                             color: Colors.purpleAccent,
@@ -567,7 +607,9 @@ class _GarageScreenState extends State<GarageScreen>
                           child: Text(
                             'No tienes piezas subidas.',
                             style: TextStyle(
-                                color: Colors.white70, fontSize: 18),
+                              color: Colors.white70,
+                              fontSize: 18,
+                            ),
                           ),
                         );
                       }
@@ -575,11 +617,11 @@ class _GarageScreenState extends State<GarageScreen>
                         padding: const EdgeInsets.all(16.0),
                         gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 10.0,
-                          mainAxisSpacing: 10.0,
-                          childAspectRatio: 0.8,
-                        ),
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 10.0,
+                              mainAxisSpacing: 10.0,
+                              childAspectRatio: 0.8,
+                            ),
                         itemCount: parts.length,
                         itemBuilder: (context, index) {
                           return _buildPartCard(context, parts[index]);
@@ -600,8 +642,7 @@ class _GarageScreenState extends State<GarageScreen>
                         SizedBox(height: 20),
                         Text(
                           'Aquí se mostrarán tus elementos favoritos.',
-                          style:
-                              TextStyle(color: Colors.white70, fontSize: 18),
+                          style: TextStyle(color: Colors.white70, fontSize: 18),
                         ),
                       ],
                     ),
@@ -618,7 +659,6 @@ class _GarageScreenState extends State<GarageScreen>
           setState(() {
             _currentIndex = index;
           });
-          // Aquí puedes implementar la navegación según el índice seleccionado
         },
       ),
     );
@@ -645,7 +685,11 @@ class _GarageScreenState extends State<GarageScreen>
   }
 
   // Widget para construir la cuadrícula del garaje (vehículos y plazas vacías)
-  Widget _buildGarageGrid(BuildContext context, List<VehicleModel> vehicles) {
+  Widget _buildGarageGrid(
+    BuildContext context,
+    List<VehicleModel> vehicles,
+    int maxSlots,
+  ) {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -656,22 +700,17 @@ class _GarageScreenState extends State<GarageScreen>
         mainAxisSpacing: 10.0,
         childAspectRatio: 0.7,
       ),
-      itemCount: vehicles.length > _maxGarageSlots
-          ? vehicles.length
-          : _maxGarageSlots,
+      itemCount: maxSlots,
       itemBuilder: (context, index) {
         VehicleModel? vehicleInSlot;
         if (index < vehicles.length) {
           vehicleInSlot = vehicles[index];
         }
+
         if (vehicleInSlot != null) {
           return _buildVehicleCard(context, vehicleInSlot);
         } else {
-          if (index < _maxGarageSlots) {
-            return _buildAddVehicleButton(context, index);
-          } else {
-            return Container();
-          }
+          return _buildAddVehicleButton(context, index);
         }
       },
     );
@@ -718,10 +757,11 @@ class _GarageScreenState extends State<GarageScreen>
                     if (loadingProgress == null) return child;
                     return Center(
                       child: CircularProgressIndicator(
-                        value: loadingProgress.expectedTotalBytes != null
-                            ? loadingProgress.cumulativeBytesLoaded /
-                                loadingProgress.expectedTotalBytes!
-                            : null,
+                        value:
+                            loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                                : null,
                         color: Colors.purpleAccent,
                       ),
                     );
@@ -760,9 +800,10 @@ class _GarageScreenState extends State<GarageScreen>
                   Text(
                     displayPrice,
                     style: TextStyle(
-                      color: vehicle.currentStatus == 'Vendido'
-                          ? Colors.redAccent
-                          : Colors.lightGreenAccent,
+                      color:
+                          vehicle.currentStatus == 'Vendido'
+                              ? Colors.redAccent
+                              : Colors.lightGreenAccent,
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
@@ -787,19 +828,14 @@ class _GarageScreenState extends State<GarageScreen>
       color: const Color(0xFF1A0033),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12.0),
-        side: const BorderSide(
-          color: Colors.purpleAccent,
-          width: 2,
-        ),
+        side: const BorderSide(color: Colors.purpleAccent, width: 2),
       ),
       elevation: 5,
       child: InkWell(
         onTap: () async {
           await Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => const AddVehicleScreen(),
-            ),
+            MaterialPageRoute(builder: (context) => const AddVehicleScreen()),
           );
         },
         borderRadius: BorderRadius.circular(12.0),
@@ -836,27 +872,24 @@ class _GarageScreenState extends State<GarageScreen>
   Widget _buildPartCard(BuildContext context, PartModel part) {
     return Card(
       color: Colors.grey[900],
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.0),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       elevation: 5,
       child: InkWell(
         onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => PartDetailScreen(part: part),
-                      ),
-                    );
-                  },
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => PartDetailScreen(part: part)),
+          );
+        },
         borderRadius: BorderRadius.circular(12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: ClipRRect(
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(12.0)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(12.0),
+                ),
                 child: Image.network(
                   part.imageUrl,
                   fit: BoxFit.cover,

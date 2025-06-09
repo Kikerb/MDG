@@ -5,6 +5,7 @@ import 'package:motor_deal_granada/screens/principal_sroll/noticias/Noticias_scr
 import 'firebase_options.dart';
 import 'screens/auth/auth_screen.dart';
 import 'screens/garage/garage.dart';
+
 import 'screens/login/login_screen.dart';
 import 'screens/market/marketscreen.dart';
 import 'screens/principal_sroll/Scroll.dart';
@@ -28,6 +29,8 @@ const String chatScreenRoute = '/chat';
 const String chatEditScreenRoute = '/chat_edit';
 const String cartScreenRoute = '/market';
 const String addPostScreenRoute = '/addpost';
+
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,6 +64,7 @@ class MyApp extends StatelessWidget {
         noticiasScreenRoute: (context) => const NoticiasScreen(),
         cartScreenRoute: (context) => const MarketScreen(),
         addPostScreenRoute: (context) => const AddPostScreen(),
+        
         // NOTA: No declaramos rutas para chatScreenRoute ni chatEditScreenRoute aquí
       },
       onGenerateRoute: (settings) {
