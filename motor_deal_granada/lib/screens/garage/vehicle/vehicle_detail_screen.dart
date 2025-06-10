@@ -1,20 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_storage/firebase_storage.dart'; // Importa Firebase Storage
+import 'package:firebase_storage/firebase_storage.dart'; // Firebase Storage
 import '../../../models/vehicle_model.dart';
-import '../../principal_sroll/post/Posts.dart'; // Importa tu PostCard y quizás la lógica de manejo de posts
+import '../../principal_sroll/post/Posts.dart'; // PostCard y lógica posts
 
 class VehicleDetailsScreen extends StatefulWidget {
-  // Cambiamos el constructor para recibir el VehicleModel
-  // El vehicleId es opcional si ya tenemos el objeto VehicleModel
-  final VehicleModel vehicle; // El vehículo que se pasa desde la pantalla anterior
-  final String? vehicleId; // Opcional: para recargar si es necesario
+  final VehicleModel vehicle;
+  final String? vehicleId;
 
   const VehicleDetailsScreen({
     super.key,
-    required this.vehicle, // Ahora se requiere el objeto VehicleModel
-    this.vehicleId, // El vehicleId ahora es opcional
+    required this.vehicle,
+    this.vehicleId,
   });
 
   @override
@@ -25,24 +23,110 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
   final User? currentUser = FirebaseAuth.instance.currentUser;
 
   Future<void> _handleLike(String postId) async {
-    // Implementa tu lógica de "me gusta" para un post
-    // Aquí puedes acceder a Firebase Firestore para actualizar el contador de likes
     print('Like manejado para el post $postId');
   }
 
   void _handleComment(String postId) {
-    // Implementa la navegación a la pantalla de comentarios
     print('Comentario manejado para el post $postId');
-    // Ejemplo de navegación a una pantalla de comentarios:
-    // Navigator.push(
-    //   context,
-    //   MaterialPageRoute(builder: (context) => CommentsScreen(postId: postId)),
-    // );
   }
 
   void _handleShare(String postId) {
-    // Implementa la lógica de compartir un post
     print('Compartir manejado para el post $postId');
+  }
+
+  Future<void> _sendOffer(double offerAmount) async {
+    if (currentUser == null) return;
+
+    final ownerId = widget.vehicle.ownerId;
+    final chatId = _generateChatId(currentUser!.uid, ownerId);
+
+    final messageData = {
+      'senderId': currentUser!.uid,
+      'receiverId': ownerId,
+      'timestamp': FieldValue.serverTimestamp(),
+      'type': 'offer',
+      'offerAmount': offerAmount,
+      'vehicleId': widget.vehicle.id,
+      'vehicleBrand': widget.vehicle.brand,
+      'vehicleModel': widget.vehicle.model,
+      'vehicleYear': widget.vehicle.year,
+      'vehicleImageUrl': widget.vehicle.mainImageUrl,
+      'status': 'pending',
+    };
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .add(messageData);
+
+      // Actualiza el último mensaje y timestamp en el chat para listas
+      await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
+        'users': [currentUser!.uid, ownerId],
+        'lastMessage': 'Oferta enviada: $offerAmount',
+        'lastTimestamp': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Oferta enviada correctamente')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al enviar la oferta: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _showOfferDialog() async {
+    final TextEditingController offerController = TextEditingController();
+
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.grey[900],
+          title: const Text('Hacer una oferta', style: TextStyle(color: Colors.white)),
+          content: TextField(
+            controller: offerController,
+            keyboardType: TextInputType.numberWithOptions(decimal: true),
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              hintText: 'Introduce tu oferta',
+              hintStyle: TextStyle(color: Colors.white54),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancelar', style: TextStyle(color: Colors.purpleAccent)),
+            ),
+            TextButton(
+              onPressed: () {
+                final input = offerController.text.trim();
+                if (input.isNotEmpty) {
+                  final offerAmount = double.tryParse(input);
+                  if (offerAmount != null && offerAmount > 0) {
+                    Navigator.of(context).pop();
+                    _sendOffer(offerAmount);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Introduce un número válido')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Enviar', style: TextStyle(color: Colors.greenAccent)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -69,7 +153,6 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
           IconButton(
             icon: const Icon(Icons.edit, color: Colors.white),
             onPressed: () {
-              // TODO: Implementar navegación a la pantalla de edición del vehículo
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Funcionalidad de editar vehículo aún no implementada.')),
               );
@@ -78,17 +161,15 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
           IconButton(
             icon: const Icon(Icons.delete, color: Colors.red),
             onPressed: () {
-              // TODO: Implementar lógica para eliminar el vehículo
               _showDeleteConfirmationDialog(context);
             },
           ),
         ],
       ),
       body: StreamBuilder<DocumentSnapshot>(
-        // Usamos el vehicleId si lo pasamos, si no, el ID del objeto VehicleModel
         stream: FirebaseFirestore.instance
             .collection('vehicles')
-            .doc(widget.vehicleId ?? widget.vehicle.id) // Usa widget.vehicleId si existe, sino widget.vehicle.id
+            .doc(widget.vehicleId ?? widget.vehicle.id)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -119,20 +200,19 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Sección de Detalles del Vehículo
                 if (vehicle.mainImageUrl.isNotEmpty)
                   Container(
                     width: double.infinity,
-                    height: 250, // Altura de la imagen principal
+                    height: 250,
                     decoration: BoxDecoration(
                       image: DecorationImage(
-                        image: NetworkImage(vehicle.mainImageUrl), // Usar ! aquí para asegurar que no es nulo
+                        image: NetworkImage(vehicle.mainImageUrl),
                         fit: BoxFit.cover,
                       ),
                     ),
                   )
                 else
-                  Container( // Placeholder si no hay imagen
+                  Container(
                     width: double.infinity,
                     height: 250,
                     color: Colors.grey[800],
@@ -155,22 +235,18 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                       const SizedBox(height: 8),
                       Text(
                         'Tipo: ${vehicle.vehicleType}',
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 16),
+                        style: const TextStyle(color: Colors.white70, fontSize: 16),
                       ),
                       Text(
                         'Kilometraje: ${vehicle.mileage.toStringAsFixed(0)} km',
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 16),
+                        style: const TextStyle(color: Colors.white70, fontSize: 16),
                       ),
                       Text(
                         'Combustible: ${vehicle.fuelType}',
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 16),
+                        style: const TextStyle(color: Colors.white70, fontSize: 16),
                       ),
                       if (vehicle.price != null &&
-                          (vehicle.currentStatus == 'En Venta' ||
-                              vehicle.currentStatus == 'Escucha Ofertas'))
+                          (vehicle.currentStatus == 'En Venta' || vehicle.currentStatus == 'Escucha Ofertas'))
                         Text(
                           'Precio: ${vehicle.price!.toStringAsFixed(0)} ${vehicle.currency ?? ''}',
                           style: const TextStyle(
@@ -194,8 +270,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                       const SizedBox(height: 10),
                       Text(
                         vehicle.description,
-                        style: const TextStyle(
-                            color: Colors.white, fontSize: 15),
+                        style: const TextStyle(color: Colors.white, fontSize: 15),
                       ),
                       if (vehicle.vin != null && vehicle.vin!.isNotEmpty)
                         Padding(
@@ -215,24 +290,39 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                             fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 10),
+
+                      // Botón hacer oferta si aplica
+                      if (vehicle.currentStatus == 'En Venta' || vehicle.currentStatus == 'Escucha Ofertas')
+                        Center(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.purpleAccent,
+                              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                            ),
+                            onPressed: () {
+                              _showOfferDialog();
+                            },
+                            child: const Text(
+                              'Hacer una oferta',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
 
-                // Sección de Posts del Vehículo
-                // Aquí usamos StreamBuilder para obtener los posts relacionados con este vehículo
+                // Posts del vehículo
                 StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
                       .collection('posts')
-                      .where('vehicleId', isEqualTo: vehicle.id) // Usamos vehicle.id aquí
+                      .where('vehicleId', isEqualTo: vehicle.id)
                       .orderBy('timestamp', descending: true)
                       .snapshots(),
                   builder: (context, postsSnapshot) {
-                    if (postsSnapshot.connectionState ==
-                        ConnectionState.waiting) {
+                    if (postsSnapshot.connectionState == ConnectionState.waiting) {
                       return const Center(
-                          child: CircularProgressIndicator(
-                              color: Colors.purpleAccent));
+                          child: CircularProgressIndicator(color: Colors.purpleAccent));
                     }
                     if (postsSnapshot.hasError) {
                       return Center(
@@ -242,15 +332,13 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                         ),
                       );
                     }
-                    if (!postsSnapshot.hasData ||
-                        postsSnapshot.data!.docs.isEmpty) {
+                    if (!postsSnapshot.hasData || postsSnapshot.data!.docs.isEmpty) {
                       return const Center(
                         child: Padding(
                           padding: EdgeInsets.all(20.0),
                           child: Text(
                             'Aún no hay posts para este vehículo.',
-                            style:
-                                TextStyle(color: Colors.white70, fontSize: 16),
+                            style: TextStyle(color: Colors.white70, fontSize: 16),
                             textAlign: TextAlign.center,
                           ),
                         ),
@@ -265,10 +353,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                         final postDoc = postsSnapshot.data!.docs[index];
                         final postData = postDoc.data() as Map<String, dynamic>;
 
-                        // Asume que tu PostCard tiene los campos necesarios
-                        // Y que necesitas el UID del usuario para determinar si ha dado like
-                        // (esto es un placeholder, deberías adaptar PostCard para manejar likes dinámicamente)
-                        final String? userId = FirebaseAuth.instance.currentUser?.uid; // Puede ser nulo
+                        final String? userId = FirebaseAuth.instance.currentUser?.uid;
 
                         return PostCard(
                           postId: postDoc.id,
@@ -300,7 +385,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
   Future<void> _showDeleteConfirmationDialog(BuildContext context) async {
     return showDialog<void>(
       context: context,
-      barrierDismissible: false, // User must tap button!
+      barrierDismissible: false, 
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: Colors.grey[900],
@@ -322,7 +407,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
             TextButton(
               child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
               onPressed: () async {
-                Navigator.of(context).pop(); // Cierra el diálogo
+                Navigator.of(context).pop(); 
                 await _deleteVehicle();
               },
             ),
@@ -334,57 +419,40 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
 
   Future<void> _deleteVehicle() async {
     try {
-      // 1. Eliminar todos los posts asociados al vehículo
       final postsQuery = await FirebaseFirestore.instance
           .collection('posts')
-          .where('vehicleId', isEqualTo: widget.vehicle.id) // Usar widget.vehicle.id
+          .where('vehicleId', isEqualTo: widget.vehicle.id)
           .get();
 
       for (final doc in postsQuery.docs) {
         await FirebaseFirestore.instance.collection('posts').doc(doc.id).delete();
       }
 
-      // 2. Eliminar la imagen principal del vehículo de Storage
-      // Solo intenta eliminar si hay una URL de imagen válida
       if (widget.vehicle.mainImageUrl.isNotEmpty) {
-        try {
-          final vehicleRef = FirebaseStorage.instance.refFromURL(widget.vehicle.mainImageUrl); // Usar widget.vehicle.mainImageUrl!
-          await vehicleRef.delete();
-        } catch (e) {
-          print('Error al eliminar imagen de Storage: $e');
-          // No bloqueamos la eliminación del vehículo si falla la imagen
-        }
+        final ref = FirebaseStorage.instance.refFromURL(widget.vehicle.mainImageUrl);
+        await ref.delete();
       }
 
-      // 3. Eliminar el documento del vehículo de Firestore
-      await FirebaseFirestore.instance
-          .collection('vehicles')
-          .doc(widget.vehicle.id) // Usar widget.vehicle.id
-          .delete();
+      await FirebaseFirestore.instance.collection('vehicles').doc(widget.vehicle.id).delete();
 
-      // 4. Decrementar garageSlotsUsed en el perfil del usuario
-      if (currentUser != null) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUser!.uid)
-            .update({'garageSlotsUsed': FieldValue.increment(-1)});
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vehículo y sus posts eliminados con éxito.')),
-      );
-      // Regresar a la pantalla anterior (GarageScreen)
-      // Asegúrate de que el pop se haga DESPUÉS de que todo se haya eliminado con éxito
-      if (mounted) { // Comprueba si el widget sigue en el árbol antes de navegar
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Vehículo eliminado correctamente')),
+        );
         Navigator.of(context).pop();
       }
     } catch (e) {
-      print('Error al eliminar vehículo: $e');
-      if (mounted) { // Comprueba si el widget sigue en el árbol antes de mostrar el SnackBar
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al eliminar vehículo: $e')),
+          SnackBar(content: Text('Error al eliminar el vehículo: $e')),
         );
       }
     }
+  }
+
+  // Función para generar el ID del chat entre dos usuarios ordenados alfabéticamente
+  String _generateChatId(String user1, String user2) {
+    final ids = [user1, user2]..sort();
+    return ids.join('_');
   }
 }

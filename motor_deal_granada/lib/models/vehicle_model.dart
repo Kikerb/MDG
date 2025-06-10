@@ -1,24 +1,24 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class VehicleModel {
-  final String id; // ID del documento (auto-generado por Firestore)
-  final String userId; // UID del propietario del vehículo
+  final String id; // ID del documento Firestore
+  final String userId; // UID del propietario
   final String brand;
   final String model;
   final int year;
   final String description;
-  final String mainImageUrl; // URL de la imagen principal del vehículo
-  final Timestamp addedAt; // Fecha y hora en que se añadió el vehículo
-  final String vehicleType; // Ej., "Coche", "Moto", "Furgoneta"
-  final String currentStatus; // "En Venta", "Escucha Ofertas", "No en Venta"
-  final double? price; // Precio (solo si currentStatus es "En Venta"), puede ser null
-  final String? currency; // Ej., "EUR", "USD"
-  final int mileage; // Kilometraje
-  final String fuelType; // Ej., "Gasolina", "Diésel", "Eléctrico"
-  final GeoPoint? location; // Ubicación geográfica del vehículo (opcional)
-  final String? vin; // VIN (Número de Identificación del Vehículo), opcional y sensible
-  final Timestamp lastModified; // Última fecha de modificación del vehículo
-  final bool isActive; // Para activar/desactivar el vehículo en el garaje
+  final String mainImageUrl; // URL imagen principal
+  final Timestamp addedAt;
+  final String vehicleType;
+  final String currentStatus;
+  final double? price;
+  final String? currency;
+  final int mileage;
+  final String fuelType;
+  final GeoPoint? location;
+  final String? vin;
+  final Timestamp lastModified;
+  final bool isActive;
 
   VehicleModel({
     required this.id,
@@ -38,10 +38,12 @@ class VehicleModel {
     this.location,
     this.vin,
     required this.lastModified,
-    this.isActive = true, // Por defecto activo al añadir
+    this.isActive = true,
   });
 
-  // Factory constructor para crear un VehicleModel desde un DocumentSnapshot de Firestore
+  // Getter para mantener coherencia con VehicleDetailsScreen (_sendOffer)
+  String get ownerId => userId;
+
   factory VehicleModel.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return VehicleModel(
@@ -55,7 +57,7 @@ class VehicleModel {
       addedAt: data['addedAt'] ?? Timestamp.now(),
       vehicleType: data['vehicleType'] ?? 'Coche',
       currentStatus: data['currentStatus'] ?? 'No en Venta',
-      price: (data['price'] as num?)?.toDouble(), // Casteo seguro a double
+      price: (data['price'] as num?)?.toDouble(),
       currency: data['currency'],
       mileage: data['mileage'] ?? 0,
       fuelType: data['fuelType'] ?? 'Desconocido',
@@ -66,7 +68,6 @@ class VehicleModel {
     );
   }
 
-  // Método para convertir un VehicleModel a un Map, útil para subir/actualizar en Firestore
   Map<String, dynamic> toFirestore() {
     return {
       'userId': userId,
@@ -89,7 +90,6 @@ class VehicleModel {
     };
   }
 
-  // Método copyWith para crear una copia modificada de un VehicleModel (útil para actualizaciones inmutables)
   VehicleModel copyWith({
     String? id,
     String? userId,

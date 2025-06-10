@@ -15,6 +15,8 @@ import '../../models/user_model.dart';
 // Import del PartRepository y PartModel
 import '../../repository/part_repository.dart';
 import '../../models/part_model.dart';
+import 'premium_screen.dart'; // Importa la pantalla de Premium
+import 'tasacion_screen.dart'; // Importa la nueva pantalla de Tasación
 
 class GarageScreen extends StatefulWidget {
   const GarageScreen({Key? key}) : super(key: key);
@@ -364,7 +366,7 @@ class _GarageScreenState extends State<GarageScreen>
                           final userData =
                               snapshot.data!.data() as Map<String, dynamic>;
                           final String userName =
-                              userData['name'] ??
+                              userData['username'] ?? // Usar 'username' si está disponible
                               userData['email'] ??
                               'Usuario';
                           return Row(
@@ -431,9 +433,9 @@ class _GarageScreenState extends State<GarageScreen>
                           final userData =
                               userDoc.data() as Map<String, dynamic>;
                           final int followers =
-                              (userData['followers'] as List?)?.length ?? 0;
+                              (userData['followersCount'] as int?) ?? 0; // Usar followersCount
                           final int following =
-                              (userData['following'] as List?)?.length ?? 0;
+                              (userData['followingCount'] as int?) ?? 0; // Usar followingCount
                           return StreamBuilder<QuerySnapshot>(
                             stream:
                                 FirebaseFirestore.instance
@@ -475,6 +477,90 @@ class _GarageScreenState extends State<GarageScreen>
               ],
             ),
             const SizedBox(height: 24),
+            // Botones de acción (Premium y Tasación)
+            StreamBuilder<DocumentSnapshot>(
+              stream: _firestore.collection('users').doc(userId).snapshots(),
+              builder: (context, userSnapshot) {
+                if (userSnapshot.connectionState == ConnectionState.waiting) {
+                  return const CircularProgressIndicator(color: Colors.purpleAccent);
+                }
+                final userData = userSnapshot.data?.data() as Map<String, dynamic>?;
+                final bool isPremium = userData?['isPremiumUser'] ?? false; // Leer isPremiumUser del modelo
+
+                return Column(
+                  children: [
+                    // Botón para ir a la pantalla Premium
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const PremiumScreen(),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.diamond, color: Colors.white),
+                        label: const Text(
+                          '¡Obtén Premium!',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.amber[700], // Color de fondo llamativo
+                          minimumSize: const Size(double.infinity, 50), // Ancho completo
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                          shadowColor: Colors.amberAccent,
+                          elevation: 10,
+                        ),
+                      ),
+                    ),
+                    if (isPremium) ...[ // Solo mostrar si es Premium
+                      const SizedBox(height: 16), // Espacio entre botones
+                      // Botón para Tasación de Vehículos (solo para Premium)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const TasacionScreen(),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.analytics, color: Colors.white),
+                          label: const Text(
+                            'Tasación de Vehículos',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blueAccent[700], // Otro color llamativo
+                            minimumSize: const Size(double.infinity, 50), // Ancho completo
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                            ),
+                            shadowColor: Colors.blueAccent,
+                            elevation: 10,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 24), // Espacio después de los botones de acción
             // Pestañas: Vehículos, Piezas, Favoritos
             Container(
               color: Colors.black,
@@ -535,9 +621,9 @@ class _GarageScreenState extends State<GarageScreen>
 
                       final userData =
                           userSnapshot.data!.data() as Map<String, dynamic>;
-                      final int garageSlots =
-                          userData['garageSlots'] ??
-                          3; // Valor por defecto si no está en la BD
+                      // Determinar las plazas de garaje basadas en si el usuario es Premium
+                      final bool isPremium = userData['isPremiumUser'] ?? false; // Leer isPremiumUser
+                      final int garageSlots = isPremium ? 6 : 3; // 6 slots para Premium, 3 para no Premium
 
                       return StreamBuilder<QuerySnapshot>(
                         stream:
@@ -760,7 +846,7 @@ class _GarageScreenState extends State<GarageScreen>
                         value:
                             loadingProgress.expectedTotalBytes != null
                                 ? loadingProgress.cumulativeBytesLoaded /
-                                    loadingProgress.expectedTotalBytes!
+                                      loadingProgress.expectedTotalBytes!
                                 : null,
                         color: Colors.purpleAccent,
                       ),
@@ -822,53 +908,7 @@ class _GarageScreenState extends State<GarageScreen>
     );
   }
 
-  // Widget para el botón de añadir vehículo en una plaza vacía
-  Widget _buildAddVehicleButton(BuildContext context, int slotIndex) {
-    return Card(
-      color: const Color(0xFF1A0033),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.0),
-        side: const BorderSide(color: Colors.purpleAccent, width: 2),
-      ),
-      elevation: 5,
-      child: InkWell(
-        onTap: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const AddVehicleScreen()),
-          );
-        },
-        borderRadius: BorderRadius.circular(12.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.add_circle_outline,
-              size: 60,
-              color: Colors.white70,
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Añadir Vehículo',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              'Plaza libre #${slotIndex + 1}',
-              style: const TextStyle(color: Colors.white54, fontSize: 12),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Widget para construir la tarjeta de una pieza usando PartModel
+  // Widget para la tarjeta de una pieza (sin category)
   Widget _buildPartCard(BuildContext context, PartModel part) {
     return Card(
       color: Colors.grey[900],
@@ -878,7 +918,9 @@ class _GarageScreenState extends State<GarageScreen>
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => PartDetailScreen(part: part)),
+            MaterialPageRoute(
+              builder: (context) => PartDetailScreen(part: part),
+            ),
           );
         },
         borderRadius: BorderRadius.circular(12.0),
@@ -891,7 +933,7 @@ class _GarageScreenState extends State<GarageScreen>
                   top: Radius.circular(12.0),
                 ),
                 child: Image.network(
-                  part.imageUrl,
+                  part.imageUrl, // Usar imageUrl del PartModel actualizado
                   fit: BoxFit.cover,
                   width: double.infinity,
                   loadingBuilder: (context, child, loadingProgress) {
@@ -901,7 +943,7 @@ class _GarageScreenState extends State<GarageScreen>
                         value:
                             loadingProgress.expectedTotalBytes != null
                                 ? loadingProgress.cumulativeBytesLoaded /
-                                    loadingProgress.expectedTotalBytes!
+                                      loadingProgress.expectedTotalBytes!
                                 : null,
                         color: Colors.purpleAccent,
                       ),
@@ -924,15 +966,75 @@ class _GarageScreenState extends State<GarageScreen>
             ),
             Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Text(
-                part.partName,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    part.partName, // Usar partName del PartModel actualizado
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${part.price.toStringAsFixed(2)} ${part.currency}', // Mostrar precio y moneda
+                    style: const TextStyle(
+                      color: Colors.lightGreenAccent,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Condición: ${part.condition}', // Mostrar la condición de la pieza
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Widget para el botón de añadir vehículo en una plaza vacía
+  Widget _buildAddVehicleButton(BuildContext context, int slotIndex) {
+    return Card(
+      color: const Color(0xFF1A0033),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.0),
+        side: const BorderSide(color: Colors.purpleAccent, width: 2),
+      ),
+      elevation: 5,
+      child: InkWell(
+        onTap: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AddVehicleScreen()),
+          );
+        },
+        borderRadius: BorderRadius.circular(12.0),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.add_circle_outline,
+              size: 60,
+              color: Colors.white70,
+            ),
+            SizedBox(height: 10),
+            Text(
+              'Añadir Vehículo',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
               ),
             ),
           ],

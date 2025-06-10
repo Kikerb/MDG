@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart'; // Asegúrate de añadir intl en pubspec.yaml
 import 'package:shared_preferences/shared_preferences.dart';
 import 'personalizacion.dart';
 import 'chat_edit.dart';
@@ -42,6 +43,9 @@ class _ChatScreenState extends State<ChatScreen> {
     _loadFavoriteDesign();
     _initializeChatDetails();
     _markMessagesAsRead();
+
+    // Scroll to bottom on new message
+    _scrollController.addListener(() {});
   }
 
   Future<void> _loadFavoriteDesign() async {
@@ -203,6 +207,16 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bgColor = _favoriteDesign ? const Color(0xFF1A0033) : Colors.black;
@@ -293,28 +307,77 @@ class _ChatScreenState extends State<ChatScreen> {
                   );
                 }
 
+                // Auto scroll al nuevo mensaje
+                WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+
                 return ListView.builder(
                   controller: _scrollController,
                   itemCount: messages.length,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
                   itemBuilder: (context, index) {
                     final messageDoc = messages[index];
-                    final messageData = messageDoc.data()! as Map<String, dynamic>;
+                    final messageData = messageDoc.data() as Map<String, dynamic>;
 
                     final isMine = messageData['senderId'] == currentUser?.uid;
 
-                    return Align(
-                      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: isMine ? messageMineColor : messageOtherColor,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          messageData['content'] ?? '[Mensaje vacío]',
-                          style: textStyle.copyWith(fontSize: 16),
-                        ),
+                    // Formatear hora
+                    final timestamp = messageData['timestamp'] as Timestamp?;
+                    final formattedTime = timestamp != null
+                        ? DateFormat('HH:mm').format(timestamp.toDate())
+                        : '';
+
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      child: Column(
+                        crossAxisAlignment:
+                            isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: isMine ? messageMineColor : messageOtherColor,
+                              borderRadius: BorderRadius.only(
+                                topLeft: const Radius.circular(16),
+                                topRight: const Radius.circular(16),
+                                bottomLeft:
+                                    Radius.circular(isMine ? 16 : 0),
+                                bottomRight:
+                                    Radius.circular(isMine ? 0 : 16),
+                              ),
+                            ),
+                            child: Text(
+                              messageData['content'] ?? '[Mensaje vacío]',
+                              style: textStyle.copyWith(fontSize: 16),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2, left: 8, right: 8),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: isMine
+                                  ? MainAxisAlignment.end
+                                  : MainAxisAlignment.start,
+                              children: [
+                                Text(
+                                  formattedTime,
+                                  style: textStyle.copyWith(
+                                    color: Colors.white60,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                if (isMine)
+                                  Icon(
+                                    Icons.done_all,
+                                    size: 14,
+                                    color: messageData['isRead'] == true
+                                        ? Colors.blueAccent
+                                        : Colors.white38,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   },
@@ -322,28 +385,32 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            color: inputBgColor,
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    style: textStyle,
-                    decoration: const InputDecoration(
-                      hintText: 'Escribe un mensaje...',
-                      hintStyle: TextStyle(color: Colors.white54),
-                      border: InputBorder.none,
+          SafeArea(
+            child: Container(
+              color: inputBgColor,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _messageController,
+                      style: textStyle,
+                      decoration: const InputDecoration(
+                        hintText: 'Escribe un mensaje...',
+                        border: InputBorder.none,
+                      ),
+                      minLines: 1,
+                      maxLines: 5,
+                      onSubmitted: (_) => _sendMessage(),
                     ),
-                    cursorColor: Colors.purpleAccent,
                   ),
-                ),
-                IconButton(
-                  icon: Icon(Icons.send, color: iconColor),
-                  onPressed: _sendMessage,
-                ),
-              ],
+                  IconButton(
+                    icon: Icon(Icons.send, color: iconColor),
+                    onPressed: _sendMessage,
+                    tooltip: 'Enviar',
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -351,30 +418,41 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Future<void> _sendMessage() async {
-    if (!_isAuthorized || currentUser == null) return;
-    final content = _messageController.text.trim();
-    if (content.isEmpty) return;
-    _messageController.clear();
+  void _sendMessage() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty || currentUser == null) return;
 
-    final messageData = {
-      'senderId': currentUser!.uid,
-      'content': content,
-      'timestamp': FieldValue.serverTimestamp(),
-      'type': 'text',
-      'isRead': false,
-    };
+    try {
+      final message = {
+        'content': text,
+        'senderId': currentUser!.uid,
+        'timestamp': FieldValue.serverTimestamp(),
+        'isRead': false,
+        'type': 'text',
+      };
 
-    final chatDocRef = FirebaseFirestore.instance.collection('messages').doc(widget.chatId);
-    final chatDoc = await chatDocRef.get();
+      await FirebaseFirestore.instance
+          .collection('messages')
+          .doc(widget.chatId)
+          .collection('messages')
+          .add(message);
 
-    if (!chatDoc.exists) {
-      await chatDocRef.set({
-        'participants': [currentUser!.uid, widget.otherUserId],
-        'isGroupChat': false,
+      _messageController.clear();
+      _scrollToBottom();
+
+      // Opcional: marcar el chat para actualizar contadores de no leídos si usas eso
+      await FirebaseFirestore.instance
+          .collection('messages')
+          .doc(widget.chatId)
+          .update({
+        'lastMessage': text,
+        'lastMessageTimestamp': FieldValue.serverTimestamp(),
+        'lastMessageSender': currentUser!.uid,
       });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al enviar mensaje: $e')),
+      );
     }
-
-    await chatDocRef.collection('messages').add(messageData);
   }
 }

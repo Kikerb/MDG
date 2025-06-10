@@ -81,7 +81,7 @@ class CustomBottomNavigationBar extends StatelessWidget {
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.shopping_cart),
-              label: 'PiezasMarket',
+              label: 'Market',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.warehouse),
