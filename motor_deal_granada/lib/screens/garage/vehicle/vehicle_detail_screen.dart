@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_storage/firebase_storage.dart'; // Firebase Storage
+
+import '../../../models/user_model.dart'; // <--- Import your UserModel
 import '../../../models/vehicle_model.dart';
 import '../../principal_sroll/post/Posts.dart'; // PostCard y lógica posts
 
@@ -21,6 +23,118 @@ class VehicleDetailsScreen extends StatefulWidget {
 
 class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
   final User? currentUser = FirebaseAuth.instance.currentUser;
+
+  // New state variables for saving functionality
+  late Future<UserModel?> _userModelFuture;
+  bool _isSaving = false; // To prevent multiple taps while saving/unsaving
+  bool _isSaved = false; // To show the correct icon (bookmark filled/outlined)
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize the future to fetch the current user's model
+    _userModelFuture = _fetchCurrentUserModel();
+  }
+
+  // --- New Methods for Save/Unsave Feature ---
+
+  // Fetches the current user's data from Firestore to determine if vehicle is saved
+  Future<UserModel?> _fetchCurrentUserModel() async {
+    if (currentUser == null) return null; // No logged-in user
+
+    try {
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .get();
+      if (doc.exists) {
+        final user = UserModel.fromFirestore(doc);
+        setState(() {
+          // Check if the current vehicle's ID is in the user's savedVehicleIds list
+          _isSaved = user.savedVehicleIds.contains(widget.vehicle.id);
+        });
+        return user;
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching user model: $e');
+      return null;
+    }
+  }
+
+  // Toggles the saved status of the vehicle in Firestore
+  Future<void> _toggleSaveVehicle() async {
+    if (currentUser == null || _isSaving) return; // No user or already saving
+
+    setState(() {
+      _isSaving = true; // Set saving state to true
+    });
+
+    try {
+      final userDocRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid);
+
+      // It's crucial to get the *latest* user data to avoid overwriting changes
+      // that might have occurred since _userModelFuture was initialized.
+      DocumentSnapshot userDoc = await userDocRef.get();
+      if (!userDoc.exists) {
+        print('User document does not exist!');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Error: Usuario no encontrado.')),
+          );
+        }
+        return;
+      }
+
+      UserModel currentUserModel = UserModel.fromFirestore(userDoc);
+      // Create a mutable copy of the list
+      List<String> updatedSavedVehicleIds = List.from(currentUserModel.savedVehicleIds);
+
+      if (_isSaved) {
+        // Vehicle is currently saved, so unsave it
+        updatedSavedVehicleIds.remove(widget.vehicle.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Vehículo eliminado de favoritos.')),
+          );
+        }
+      } else {
+        // Vehicle is not saved, so save it
+        updatedSavedVehicleIds.add(widget.vehicle.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Vehículo añadido a favoritos.')),
+          );
+        }
+      }
+
+      // Update Firestore with the new list of saved vehicle IDs
+      await userDocRef.update({
+        'savedVehicleIds': updatedSavedVehicleIds,
+      });
+
+      // Update local state to reflect the change
+      setState(() {
+        _isSaved = !_isSaved; // Toggle the saved state
+      });
+
+    } catch (e) {
+      print('Error toggling save vehicle: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al actualizar favoritos: $e')),
+        );
+      }
+    } finally {
+      setState(() {
+        _isSaving = false; // Reset saving state
+      });
+    }
+  }
+
+  // --- Existing Methods ---
 
   Future<void> _handleLike(String postId) async {
     print('Like manejado para el post $postId');
@@ -70,7 +184,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Oferta enviada correctamente')),
+          const SnackBar(content: Text('Oferta enviada correctamente')),
         );
       }
     } catch (e) {
@@ -150,6 +264,29 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          // Conditionally show the "Save Vehicle" button
+          if (currentUser != null && currentUser!.uid != widget.vehicle.userId) // Don't allow saving your own vehicle
+            FutureBuilder<UserModel?>(
+              future: _userModelFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting || _isSaving) {
+                  return const SizedBox(
+                    width: 48, // Adjust size for better fit in AppBar
+                    height: 48,
+                    child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                  );
+                }
+                // No need to handle snapshot.hasError here, _fetchCurrentUserModel handles it.
+                // Just show the button based on _isSaved state.
+                return IconButton(
+                  icon: Icon(
+                    _isSaved ? Icons.bookmark : Icons.bookmark_border,
+                    color: _isSaved ? Colors.purpleAccent : Colors.white, // Purple when saved
+                  ),
+                  onPressed: _toggleSaveVehicle, // Call the toggle method
+                );
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.edit, color: Colors.white),
             onPressed: () {
@@ -385,7 +522,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
   Future<void> _showDeleteConfirmationDialog(BuildContext context) async {
     return showDialog<void>(
       context: context,
-      barrierDismissible: false, 
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: Colors.grey[900],
@@ -407,7 +544,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
             TextButton(
               child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
               onPressed: () async {
-                Navigator.of(context).pop(); 
+                Navigator.of(context).pop();
                 await _deleteVehicle();
               },
             ),

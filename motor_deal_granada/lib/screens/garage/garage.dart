@@ -11,7 +11,7 @@ import '../setings/ConfiguracionUser.dart'; // Pantalla de configuración del us
 import '../../models/vehicle_model.dart'; // Clase VehicleModel
 import 'vehicle/addvehiclescreen.dart'; // Pantalla añadir vehículo
 import 'vehicle/vehicle_detail_screen.dart'; // Pantalla de detalles del vehículo
-import '../../models/user_model.dart';
+import '../../models/user_model.dart'; // Importa tu UserModel
 // Import del PartRepository y PartModel
 import '../../repository/part_repository.dart';
 import '../../models/part_model.dart';
@@ -715,23 +715,116 @@ class _GarageScreenState extends State<GarageScreen>
                       );
                     },
                   ),
-                  // Pestaña de Favoritos (marcador de posición)
-                  const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.favorite_border,
-                          size: 80,
-                          color: Colors.white54,
-                        ),
-                        SizedBox(height: 20),
-                        Text(
-                          'Aquí se mostrarán tus elementos favoritos.',
-                          style: TextStyle(color: Colors.white70, fontSize: 18),
-                        ),
-                      ],
-                    ),
+                  // Pestaña de Favoritos (mostrar vehículos a los que el usuario ha dado "me gusta")
+                  StreamBuilder<DocumentSnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(userId)
+                        .snapshots(),
+                    builder: (context, userSnapshot) {
+                      if (userSnapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.purpleAccent,
+                          ),
+                        );
+                      }
+                      if (userSnapshot.hasError) {
+                        return Center(
+                          child: Text(
+                            'Error al cargar favoritos: ${userSnapshot.error}',
+                            style: const TextStyle(color: Colors.redAccent),
+                          ),
+                        );
+                      }
+                      if (!userSnapshot.hasData || !userSnapshot.data!.exists) {
+                        return const Center(
+                          child: Text(
+                            'Usuario no encontrado o sin datos de favoritos.',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        );
+                      }
+
+                      final userData = userSnapshot.data!.data() as Map<String, dynamic>;
+                      // --- CAMBIO AQUÍ: Ahora se lee de 'savedVehicleIds' ---
+                      final List<String> savedVehicleIds =
+                          List<String>.from(userData['savedVehicleIds'] ?? []);
+
+                      if (savedVehicleIds.isEmpty) {
+                        return const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.favorite_border,
+                                size: 80,
+                                color: Colors.white54,
+                              ),
+                              SizedBox(height: 20),
+                              Text(
+                                'Aquí se mostrarán tus vehículos favoritos. ¡Empieza a explorar!',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.white70, fontSize: 18),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      // Consultar los vehículos favoritos por sus IDs
+                      return StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('vehicles')
+                            .where(FieldPath.documentId, whereIn: savedVehicleIds) // Usar savedVehicleIds
+                            .snapshots(),
+                        builder: (context, vehicleSnapshot) {
+                          if (vehicleSnapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(
+                              child: CircularProgressIndicator(
+                                color: Colors.purpleAccent,
+                              ),
+                            );
+                          }
+                          if (vehicleSnapshot.hasError) {
+                            return Center(
+                              child: Text(
+                                'Error al cargar vehículos favoritos: ${vehicleSnapshot.error}',
+                                style: const TextStyle(color: Colors.redAccent),
+                              ),
+                            );
+                          }
+                          if (!vehicleSnapshot.hasData || vehicleSnapshot.data!.docs.isEmpty) {
+                            return const Center(
+                              child: Text(
+                                'No se encontraron vehículos favoritos con esos IDs.',
+                                style: TextStyle(color: Colors.white70, fontSize: 18),
+                              ),
+                            );
+                          }
+
+                          final List<VehicleModel> favoriteVehicles =
+                              vehicleSnapshot.data!.docs
+                                  .map((doc) => VehicleModel.fromFirestore(doc))
+                                  .toList();
+
+                          return GridView.builder(
+                            padding: const EdgeInsets.all(16.0),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: 10.0,
+                                  mainAxisSpacing: 10.0,
+                                  childAspectRatio: 0.8,
+                                ),
+                            itemCount: favoriteVehicles.length,
+                            itemBuilder: (context, index) {
+                              return _buildVehicleCard(context, favoriteVehicles[index]);
+                            },
+                          );
+                        },
+                      );
+                    },
                   ),
                 ],
               ),

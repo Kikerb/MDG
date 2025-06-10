@@ -1,19 +1,20 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UserModel {
-  final String uid; // ID único del usuario (Document ID en Firestore, coincide con Firebase Auth UID)
+  final String uid;
   final String email;
-  final String username; // Ahora es requerido (no opcional), ya que es un campo clave
-  final String? profileImageUrl; // URL de la imagen de perfil, puede ser null
-  final Timestamp createdAt; // Marca de tiempo de creación de la cuenta
-  final int followersCount; // Cantidad de usuarios que siguen a este
-  final int followingCount; // Cantidad de usuarios que este usuario sigue
-  final int garageSlots; // Cantidad total de plazas de garaje que tiene el usuario
-  final int garageSlotsUsed; // Cantidad de plazas de garaje actualmente en uso
-  final bool isPremiumUser; // Indica si el usuario tiene una suscripción premium
-  final Timestamp lastActive; // Última vez que el usuario estuvo activo
-  final List<String> interests; // Intereses del usuario para personalización del feed
-  final String? bio; // ¡Campo nuevo añadido!
+  final String username;
+  final String? profileImageUrl;
+  final Timestamp createdAt;
+  final int followersCount;
+  final int followingCount;
+  final int garageSlots;
+  final int garageSlotsUsed;
+  final bool isPremiumUser;
+  final Timestamp lastActive;
+  final List<String> interests;
+  final String? bio;
+  final List<String> savedVehicleIds; // <--- NEW FIELD: List of saved vehicle IDs
 
   UserModel({
     required this.uid,
@@ -23,35 +24,35 @@ class UserModel {
     required this.createdAt,
     this.followersCount = 0,
     this.followingCount = 0,
-    this.garageSlots = 3, // Por defecto, 3 plazas
+    this.garageSlots = 3,
     this.garageSlotsUsed = 0,
     this.isPremiumUser = false,
     required this.lastActive,
     this.interests = const [],
-    this.bio, // ¡Añadido al constructor!
+    this.bio,
+    this.savedVehicleIds = const [], // <--- Initialize in constructor
   });
 
-  // Factory constructor para crear un UserModel desde un DocumentSnapshot de Firestore
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return UserModel(
       uid: doc.id,
-      email: data['email'] ?? '', // Asegúrate de que el email siempre esté presente
-      username: data['username'] ?? 'Usuario Anónimo', // Valor por defecto si no existe
+      email: data['email'] ?? '',
+      username: data['username'] ?? 'Usuario Anónimo',
       profileImageUrl: data['profileImageUrl'],
-      createdAt: data['createdAt'] ?? Timestamp.now(), // Por defecto, la hora actual si no existe
+      createdAt: data['createdAt'] ?? Timestamp.now(),
       followersCount: data['followersCount'] ?? 0,
       followingCount: data['followingCount'] ?? 0,
-      garageSlots: data['garageSlots'] ?? 3, // Por defecto 5 si no se especifica
+      garageSlots: data['garageSlots'] ?? 3,
       garageSlotsUsed: data['garageSlotsUsed'] ?? 0,
       isPremiumUser: data['isPremiumUser'] ?? false,
-      lastActive: data['lastActive'] ?? Timestamp.now(), // Por defecto, la hora actual si no existe
+      lastActive: data['lastActive'] ?? Timestamp.now(),
       interests: List<String>.from(data['interests'] ?? []),
-      bio: data['bio'] as String?, // ¡Lectura del campo 'bio'!
+      bio: data['bio'] as String?,
+      savedVehicleIds: List<String>.from(data['savedVehicleIds'] ?? []), // <--- Read from Firestore
     );
   }
 
-  // Método para convertir un UserModel a un Map, útil para subir/actualizar en Firestore
   Map<String, dynamic> toFirestore() {
     return {
       'email': email,
@@ -65,11 +66,11 @@ class UserModel {
       'isPremiumUser': isPremiumUser,
       'lastActive': lastActive,
       'interests': interests,
-      'bio': bio, // ¡Escritura del campo 'bio'!
+      'bio': bio,
+      'savedVehicleIds': savedVehicleIds, // <--- Write to Firestore
     };
   }
 
-  // Método copyWith para crear una copia modificada de un UserModel (útil para actualizaciones inmutables)
   UserModel copyWith({
     String? uid,
     String? email,
@@ -83,7 +84,8 @@ class UserModel {
     bool? isPremiumUser,
     Timestamp? lastActive,
     List<String>? interests,
-    String? bio, // ¡Añadido al copyWith!
+    String? bio,
+    List<String>? savedVehicleIds, // <--- Add to copyWith
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -98,7 +100,8 @@ class UserModel {
       isPremiumUser: isPremiumUser ?? this.isPremiumUser,
       lastActive: lastActive ?? this.lastActive,
       interests: interests ?? this.interests,
-      bio: bio ?? this.bio, // ¡Asignación del bio en copyWith!
+      bio: bio ?? this.bio,
+      savedVehicleIds: savedVehicleIds ?? this.savedVehicleIds, // <--- Assign in copyWith
     );
   }
 }
