@@ -6,7 +6,6 @@ class CompartirScreen extends StatelessWidget {
   final String shareText;
   final String shareUrl;
 
-
   const CompartirScreen({
     Key? key,
     required this.shareText,
@@ -36,7 +35,10 @@ class CompartirScreen extends StatelessWidget {
           .get();
 
       if (isFollowingBack.exists) {
-        final userSnap = await FirebaseFirestore.instance.collection('users').doc(followedId).get();
+        final userSnap = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(followedId)
+            .get();
         if (userSnap.exists) {
           mutuals.add({
             'userId': followedId,
@@ -58,7 +60,7 @@ class CompartirScreen extends StatelessWidget {
     final chatDocId = chatId.join("_");
 
     final chatRef = FirebaseFirestore.instance
-        .collection('chats')
+        .collection('messages')
         .doc(chatDocId)
         .collection('messages');
 
@@ -70,6 +72,16 @@ class CompartirScreen extends StatelessWidget {
       'postId': shareUrl,
       'text': shareText,
     });
+
+    // Update resumen del chat
+    await FirebaseFirestore.instance
+        .collection('messages')
+        .doc(chatDocId)
+        .set({
+      'lastMessage': '[Post compartido]',
+      'lastMessageSender': currentUser.uid,
+      'lastMessageTimestamp': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   @override

@@ -20,7 +20,7 @@ class PostCard extends StatelessWidget {
   final bool showActions;
   final bool showUsername;
 
-  final VoidCallback? onUserTap; // 👈 Nuevo parámetro
+  final VoidCallback? onUserTap;
 
   const PostCard({
     super.key,
