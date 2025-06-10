@@ -5,7 +5,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import '/main.dart';
+import '/main.dart'; 
 import '/models/vehicle_model.dart';
 import '/models/post_model.dart';
 import 'select_vehicle_screen.dart';
@@ -28,14 +28,14 @@ class _AddPostScreenState extends State<AddPostScreen> {
   VehicleModel? _selectedVehicle;
 
   @override
-void initState() {
-  super.initState();
-  if (_auth.currentUser == null) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Navigator.of(context).pushReplacementNamed(scrollScreenRoute);
-    });
+  void initState() {
+    super.initState();
+    if (_auth.currentUser == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.of(context).pushReplacementNamed(scrollScreenRoute);
+      });
+    }
   }
-}
 
   @override
   void dispose() {
@@ -156,7 +156,7 @@ void initState() {
           await _firestore.collection('users').doc(user.uid).get();
       String username =
           userDoc.exists
-              ? (userDoc.data() as Map<String, dynamic>)['name'] ?? user.email
+              ? (userDoc.data() as Map<String, dynamic>)['username'] ?? user.email // Changed 'name' to 'username' based on common practice
               : user.email ?? 'Usuario Desconocido';
       String? userProfileImageUrl =
           userDoc.exists
@@ -186,9 +186,8 @@ void initState() {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Publicación creada con éxito!')),
         );
-        Navigator.of(
-          context,
-        ).pushReplacementNamed(scrollScreenRoute); // ← Redirige a scroll
+        // Redirige a scrollScreenRoute después de publicar
+        Navigator.of(context).pushReplacementNamed(scrollScreenRoute);
       }
     } catch (e) {
       if (mounted) {
@@ -226,7 +225,8 @@ void initState() {
         leading: IconButton(
           icon: const Icon(Icons.close, color: Colors.white),
           onPressed: () {
-            Navigator.of(context).pop();
+            // Redirige a scrollScreenRoute al presionar el botón de cerrar
+            Navigator.of(context).pushReplacementNamed(scrollScreenRoute);
           },
         ),
         actions: [
@@ -236,117 +236,117 @@ void initState() {
                 _isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Text(
-                      'Publicar',
-                      style: TextStyle(
-                        color: Colors.purpleAccent,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                        'Publicar',
+                        style: TextStyle(
+                          color: Colors.purpleAccent,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
           ),
         ],
       ),
       body:
           _isLoading
               ? const Center(
-                child: CircularProgressIndicator(color: Colors.purpleAccent),
-              )
+                  child: CircularProgressIndicator(color: Colors.purpleAccent),
+                )
               : SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    GestureDetector(
-                      onTap: _showImageSourceActionSheet,
-                      child: Container(
-                        height: MediaQuery.of(context).size.width * 0.8,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[900],
-                          borderRadius: BorderRadius.circular(12.0),
-                          border: Border.all(color: Colors.white12, width: 1),
-                        ),
-                        child:
-                            _imageFile != null
-                                ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  child: Image.file(
-                                    _imageFile!,
-                                    fit: BoxFit.cover,
-                                  ),
-                                )
-                                : const Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.add_a_photo,
-                                      size: 60,
-                                      color: Colors.white54,
-                                    ),
-                                    SizedBox(height: 10),
-                                    Text(
-                                      'Toca para añadir imagen',
-                                      style: TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 16,
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      GestureDetector(
+                        onTap: _showImageSourceActionSheet,
+                        child: Container(
+                          height: MediaQuery.of(context).size.width * 0.8,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[900],
+                            borderRadius: BorderRadius.circular(12.0),
+                            border: Border.all(color: Colors.white12, width: 1),
+                          ),
+                          child:
+                              _imageFile != null
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      child: Image.file(
+                                        _imageFile!,
+                                        fit: BoxFit.cover,
                                       ),
+                                    )
+                                  : const Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.add_a_photo,
+                                          size: 60,
+                                          color: Colors.white54,
+                                        ),
+                                        SizedBox(height: 10),
+                                        Text(
+                                          'Toca para añadir imagen',
+                                          style: TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    TextField(
-                      controller: _descriptionController,
-                      maxLines: 4,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText:
-                            'Escribe una descripción para tu publicación...',
-                        hintStyle: const TextStyle(color: Colors.white54),
-                        filled: true,
-                        fillColor: Colors.grey[850],
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                          borderSide: BorderSide.none,
                         ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                          borderSide: const BorderSide(
-                            color: Colors.purpleAccent,
-                            width: 2,
+                      ),
+                      const SizedBox(height: 20),
+                      TextField(
+                        controller: _descriptionController,
+                        maxLines: 4,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText:
+                              'Escribe una descripción para tu publicación...',
+                          hintStyle: const TextStyle(color: Colors.white54),
+                          filled: true,
+                          fillColor: Colors.grey[850],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                            borderSide: const BorderSide(
+                              color: Colors.purpleAccent,
+                              width: 2,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton.icon(
-                      onPressed: _selectVehicle,
-                      icon: const Icon(
-                        Icons.directions_car,
-                        color: Colors.white,
-                      ),
-                      label: Text(
-                        _selectedVehicle != null
-                            ? 'Vehículo: ${_selectedVehicle!.brand} ${_selectedVehicle!.model}'
-                            : 'Seleccionar Vehículo',
-                        style: const TextStyle(
+                      const SizedBox(height: 20),
+                      ElevatedButton.icon(
+                        onPressed: _selectVehicle,
+                        icon: const Icon(
+                          Icons.directions_car,
                           color: Colors.white,
-                          fontSize: 16,
+                        ),
+                        label: Text(
+                          _selectedVehicle != null
+                              ? 'Vehículo: ${_selectedVehicle!.brand} ${_selectedVehicle!.model}'
+                              : 'Seleccionar Vehículo',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey[800],
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
                         ),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey[800],
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
+                      const SizedBox(height: 20),
+                    ],
+                  ),
                 ),
-              ),
     );
   }
 }

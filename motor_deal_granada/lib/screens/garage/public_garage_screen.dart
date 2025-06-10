@@ -37,33 +37,52 @@ class _PublicGarageScreenState extends State<PublicGarageScreen> with SingleTick
     _fetchCounts();
   }
 
+  // Elimina el TabController cuando el widget se elimina del árbol de widgets
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
   Future<void> _checkFollowingStatus() async {
     if (currentUser == null || currentUser!.uid == widget.userId) return;
-    final doc = await FirebaseFirestore.instance.collection('users').doc(currentUser!.uid).get();
-    final List following = doc['following'] ?? [];
-    setState(() => isFollowing = following.contains(widget.userId));
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(currentUser!.uid).get();
+      if (doc.exists) {
+        final List following = doc['following'] ?? [];
+        setState(() => isFollowing = following.contains(widget.userId));
+      }
+    } catch (e) {
+      print("Error al verificar el estado de seguimiento: $e");
+    }
   }
 
   Future<void> _fetchCounts() async {
-    final doc = await FirebaseFirestore.instance.collection('users').doc(widget.userId).get();
-    final data = doc.data();
-    if (data != null) {
-      final vehicleSnap = await FirebaseFirestore.instance
-          .collection('vehicles')
-          .where('userId', isEqualTo: widget.userId)
-          .get();
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(widget.userId).get();
+      final data = doc.data();
+      if (data != null) {
+        final vehicleSnap = await FirebaseFirestore.instance
+            .collection('vehicles')
+            .where('userId', isEqualTo: widget.userId)
+            .get();
 
-      final partSnap = await FirebaseFirestore.instance
-          .collection('parts')
-          .where('userId', isEqualTo: widget.userId)
-          .get();
+        final partSnap = await FirebaseFirestore.instance
+            .collection('parts')
+            .where('userId', isEqualTo: widget.userId)
+            .get();
 
-      setState(() {
-        followersCount = (data['followers'] as List?)?.length ?? 0;
-        followingCount = (data['following'] as List?)?.length ?? 0;
-        vehicleCount = vehicleSnap.size;
-        partCount = partSnap.size;
-      });
+        if (mounted) { // Asegúrate de que el widget todavía esté montado antes de llamar a setState
+          setState(() {
+            followersCount = (data['followers'] as List?)?.length ?? 0;
+            followingCount = (data['following'] as List?)?.length ?? 0;
+            vehicleCount = vehicleSnap.size;
+            partCount = partSnap.size;
+          });
+        }
+      }
+    } catch (e) {
+      print("Error al obtener los recuentos: $e");
     }
   }
 
@@ -72,24 +91,33 @@ class _PublicGarageScreenState extends State<PublicGarageScreen> with SingleTick
     final userRef = FirebaseFirestore.instance.collection('users').doc(currentUser!.uid);
     final targetRef = FirebaseFirestore.instance.collection('users').doc(widget.userId);
 
-    if (isFollowing) {
-      await userRef.update({'following': FieldValue.arrayRemove([widget.userId])});
-      await targetRef.update({'followers': FieldValue.arrayRemove([currentUser!.uid])});
-    } else {
-      await userRef.update({'following': FieldValue.arrayUnion([widget.userId])});
-      await targetRef.update({'followers': FieldValue.arrayUnion([currentUser!.uid])});
-    }
+    try {
+      if (isFollowing) {
+        await userRef.update({'following': FieldValue.arrayRemove([widget.userId])});
+        await targetRef.update({'followers': FieldValue.arrayRemove([currentUser!.uid])});
+      } else {
+        await userRef.update({'following': FieldValue.arrayUnion([widget.userId])});
+        await targetRef.update({'followers': FieldValue.arrayUnion([currentUser!.uid])});
+      }
 
-    setState(() {
-      isFollowing = !isFollowing;
-      _fetchCounts();
-    });
+      if (mounted) {
+        setState(() {
+          isFollowing = !isFollowing;
+          _fetchCounts(); // Vuelve a obtener los recuentos para actualizar la UI inmediatamente
+        });
+      }
+    } catch (e) {
+      print("Error al cambiar el estado de seguimiento: $e");
+      // Opcionalmente, muestra un SnackBar al usuario
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error al cambiar el estado de seguimiento.')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final isOwnProfile = currentUser?.uid == widget.userId;
-    final canViewContent = isOwnProfile || isFollowing;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -101,18 +129,32 @@ class _PublicGarageScreenState extends State<PublicGarageScreen> with SingleTick
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance.collection('users').doc(widget.userId).snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
+          }
+          if (!snapshot.hasData || !snapshot.data!.exists) {
+            return const Center(child: Text('Usuario no encontrado.', style: TextStyle(color: Colors.white70)));
+          }
 
           final data = snapshot.data!.data() as Map<String, dynamic>;
           final username = data['username'] ?? 'Usuario';
           final profileImageUrl = data['profileImageUrl'] ?? 'https://i.imgur.com/BoN9kdC.png';
 
+          // Reevalúa canViewContent basándose en el último estado de seguimiento
+          // Esto asegura que si el usuario sigue/deja de seguir, la vista de contenido se actualiza
+          final canViewContent = isOwnProfile || isFollowing;
+
           return Column(
             children: [
               const SizedBox(height: 16),
-              _buildProfileHeader(username, profileImageUrl, isOwnProfile),
+              _buildProfileHeader(username, profileImageUrl, isOwnProfile, canViewContent),
               const SizedBox(height: 10),
+              // Solo muestra TabBar si el contenido se puede ver
               if (canViewContent) _buildTabBar(),
+              // Usa un widget Expanded para asegurar que TabBarView ocupe el espacio disponible
               if (canViewContent)
                 Expanded(
                   child: TabBarView(
@@ -126,10 +168,13 @@ class _PublicGarageScreenState extends State<PublicGarageScreen> with SingleTick
               else
                 const Expanded(
                   child: Center(
-                    child: Text(
-                      'Debes seguir a este usuario para ver su garaje.',
-                      style: TextStyle(color: Colors.white70, fontSize: 16),
-                      textAlign: TextAlign.center,
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Text(
+                        'Debes seguir a este usuario para ver su garaje.',
+                        style: TextStyle(color: Colors.white70, fontSize: 16),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
                 ),
@@ -140,7 +185,7 @@ class _PublicGarageScreenState extends State<PublicGarageScreen> with SingleTick
     );
   }
 
-  Widget _buildProfileHeader(String username, String imageUrl, bool isOwnProfile) {
+  Widget _buildProfileHeader(String username, String imageUrl, bool isOwnProfile, bool canViewContent) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
@@ -153,23 +198,29 @@ class _PublicGarageScreenState extends State<PublicGarageScreen> with SingleTick
               children: [
                 Text(username, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildStatColumn("SEGUIDORES", followersCount),
-                    _buildStatColumn("SEGUIDOS", followingCount),
-                    _buildStatColumn("VEHÍCULOS", vehicleCount),
-                    _buildStatColumn("PIEZAS", partCount),
-                  ],
-                ),
+                // Solo muestra las estadísticas si el contenido se puede ver o es el propio perfil
+                if (canViewContent || isOwnProfile)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildStatColumn("SEGUIDORES", followersCount),
+                      _buildStatColumn("SEGUIDOS", followingCount),
+                      _buildStatColumn("VEHÍCULOS", vehicleCount),
+                      _buildStatColumn("PIEZAS", partCount),
+                    ],
+                  ),
                 const SizedBox(height: 8),
                 if (!isOwnProfile)
                   ElevatedButton(
                     onPressed: _toggleFollow,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: isFollowing ? Colors.grey : Colors.purpleAccent,
+                      minimumSize: const Size(double.infinity, 36), // Haz que el botón ocupe todo el ancho
                     ),
-                    child: Text(isFollowing ? 'Siguiendo' : 'Seguir'),
+                    child: Text(
+                      isFollowing ? 'Siguiendo' : 'Seguir',
+                      style: const TextStyle(color: Colors.white),
+                    ),
                   ),
               ],
             ),
@@ -189,11 +240,12 @@ class _PublicGarageScreenState extends State<PublicGarageScreen> with SingleTick
   }
 
   Widget _buildTabBar() {
-    return const TabBar(
+    return TabBar( // El TabBar necesita un controlador
+      controller: _tabController,
       indicatorColor: Colors.purpleAccent,
       labelColor: Colors.purpleAccent,
       unselectedLabelColor: Colors.white70,
-      tabs: [
+      tabs: const [
         Tab(icon: Icon(Icons.directions_car), text: 'Vehículos'),
         Tab(icon: Icon(Icons.build), text: 'Piezas'),
       ],
@@ -208,15 +260,23 @@ class _PublicGarageScreenState extends State<PublicGarageScreen> with SingleTick
           .orderBy('addedAt', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text('Sin vehículos.', style: TextStyle(color: Colors.white70)));
+        }
 
         final List<VehicleModel> vehicles = snapshot.data!.docs
             .map((doc) => VehicleModel.fromFirestore(doc))
-            .where((v) => v.isActive)
+            .where((v) => v.isActive) // Asumiendo que isActive es una propiedad en tu VehicleModel
             .toList();
 
         if (vehicles.isEmpty) {
-          return const Center(child: Text('Sin vehículos.', style: TextStyle(color: Colors.white70)));
+          return const Center(child: Text('Sin vehículos activos.', style: TextStyle(color: Colors.white70)));
         }
 
         return GridView.builder(
@@ -246,7 +306,12 @@ class _PublicGarageScreenState extends State<PublicGarageScreen> with SingleTick
                     Expanded(
                       child: ClipRRect(
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                        child: Image.network(vehicle.mainImageUrl, fit: BoxFit.cover, width: double.infinity),
+                        child: Image.network(
+                          vehicle.mainImageUrl,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, color: Colors.grey),
+                        ),
                       ),
                     ),
                     Padding(
@@ -254,9 +319,9 @@ class _PublicGarageScreenState extends State<PublicGarageScreen> with SingleTick
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('${vehicle.brand} ${vehicle.model}', style: const TextStyle(color: Colors.white)),
-                          Text('${vehicle.year} - ${vehicle.fuelType}', style: const TextStyle(color: Colors.white70)),
-                          Text(vehicle.currentStatus, style: const TextStyle(color: Colors.orangeAccent)),
+                          Text('${vehicle.brand} ${vehicle.model}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          Text('${vehicle.year} - ${vehicle.fuelType}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                          Text(vehicle.currentStatus, style: const TextStyle(color: Colors.orangeAccent, fontSize: 12)),
                         ],
                       ),
                     ),
@@ -274,12 +339,17 @@ class _PublicGarageScreenState extends State<PublicGarageScreen> with SingleTick
     return FutureBuilder<List<PartModel>>(
       future: _partRepository.fetchPartsByUser(widget.userId),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-
-        final parts = snapshot.data!;
-        if (parts.isEmpty) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const Center(child: Text('Sin piezas.', style: TextStyle(color: Colors.white70)));
         }
+
+        final parts = snapshot.data!;
 
         return GridView.builder(
           padding: const EdgeInsets.all(16),
@@ -308,12 +378,17 @@ class _PublicGarageScreenState extends State<PublicGarageScreen> with SingleTick
                     Expanded(
                       child: ClipRRect(
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                        child: Image.network(part.imageUrl, fit: BoxFit.cover, width: double.infinity),
+                        child: Image.network(
+                          part.imageUrl,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, color: Colors.grey),
+                        ),
                       ),
                     ),
                     Padding(
                       padding: const EdgeInsets.all(8),
-                      child: Text(part.partName, style: const TextStyle(color: Colors.white)),
+                      child: Text(part.partName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
