@@ -1,3 +1,5 @@
+// Correcciones para el funcionamiento de compartir posts
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -5,11 +7,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 class CompartirScreen extends StatelessWidget {
   final String shareText;
   final String shareUrl;
+  final String postId; // Añadimos el postId para actualizar el contador
 
   const CompartirScreen({
     Key? key,
     required this.shareText,
     required this.shareUrl,
+    required this.postId,
   }) : super(key: key);
 
   Future<List<Map<String, dynamic>>> _getMutualFollowers() async {
@@ -52,36 +56,44 @@ class CompartirScreen extends StatelessWidget {
     return mutuals;
   }
 
-  Future<void> _sendPostToChat(String receiverId, String shareUrl) async {
+  Future<void> _sendPostToChat(BuildContext context, String receiverId) async {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
 
     final chatId = [currentUser.uid, receiverId]..sort();
     final chatDocId = chatId.join("_");
 
-    final chatRef = FirebaseFirestore.instance
-        .collection('messages')
-        .doc(chatDocId)
-        .collection('messages');
-
-    await chatRef.add({
+    final message = {
       'senderId': currentUser.uid,
       'receiverId': receiverId,
       'timestamp': FieldValue.serverTimestamp(),
       'type': 'post',
-      'postId': shareUrl,
-      'text': shareText,
-    });
+      'imageUrl': shareUrl,
+      'description': shareText,
+    };
 
-    // Update resumen del chat
-    await FirebaseFirestore.instance
+    final chatMessagesRef = FirebaseFirestore.instance
         .collection('messages')
         .doc(chatDocId)
-        .set({
+        .collection('messages');
+
+    await chatMessagesRef.add(message);
+
+    await FirebaseFirestore.instance.collection('messages').doc(chatDocId).set({
       'lastMessage': '[Post compartido]',
       'lastMessageSender': currentUser.uid,
       'lastMessageTimestamp': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+
+    await FirebaseFirestore.instance.collection('posts').doc(postId).update({
+      'shares': FieldValue.increment(1),
+    });
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Post compartido con éxito')),
+      );
+    }
   }
 
   @override
@@ -118,11 +130,8 @@ class CompartirScreen extends StatelessWidget {
                 ),
                 title: Text(user['username'], style: const TextStyle(color: Colors.white)),
                 onTap: () async {
-                  await _sendPostToChat(user['userId'], shareUrl);
+                  await _sendPostToChat(context, user['userId']);
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Post compartido con ${user['username']}')),
-                  );
                 },
               );
             },

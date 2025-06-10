@@ -25,25 +25,22 @@ dependencies:
   geolocator: ^11.0.0
   intl: ^0.20.2
 
-flutter_icons:
-  android: true
-  ios: true
-  image_path: "assets/image/logo.png"
-
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
 
-flutter_launcher_icons:
-  android: true
-  adaptive_icon_foreground: "assets/image/logo.png"
-  adaptive_icon_background: "#000000"
-  image_path_android: "assets/image/logo.png"
-
 flutter:
   uses-material-design: true
-
   assets:
     - assets/image/folleto.jpg
+    - assets/image/Esta.png
+    - assets/image/motordeal.png
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/image/Esta.png
+  adaptive_icon_foreground: assets/image/motordeal.png
+  adaptive_icon_background: "#000000"

@@ -1,7 +1,3 @@
-// CAMBIOS APLICADOS:
-// - Ahora se recargan las preferencias personalizadas al volver desde PersonalizacionScreen
-// - Se aplican colores y fuentes personalizados directamente desde SharedPreferences
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
