@@ -38,9 +38,12 @@ class _PersonalizacionScreenState extends State<PersonalizacionScreen> {
     await prefs.setInt('otherMessageColor', otherMessageColor.value);
     await prefs.setDouble('fontSize', fontSize);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Preferencias guardadas")),
-    );
+    if (context.mounted) {
+      Navigator.pop(context, true); // <- Esto notifica al ChatScreen que debe recargar
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Preferencias guardadas")),
+      );
+    }
   }
 
   @override
