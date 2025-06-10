@@ -266,7 +266,7 @@ class _ScrollScreenState extends State<ScrollScreen> {
                   children: [
                     Center(
                       child: Image.asset(
-                        'assets/images/folleto.jpg',
+                        'assets/image/folleto.jpg',
                         fit: BoxFit.contain,
                       ),
                     ),
