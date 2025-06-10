@@ -318,6 +318,12 @@ class _ChatScreenState extends State<ChatScreen> {
                     final messageDoc = messages[index];
                     final messageData = messageDoc.data() as Map<String, dynamic>;
 
+                    final type = messageData['type'] ?? 'text';
+
+                    if (type == 'post') {
+                      return buildSharedPostMessage(messageData, context);
+                    }
+
                     final isMine = messageData['senderId'] == currentUser?.uid;
 
                     // Formatear hora
@@ -454,5 +460,95 @@ class _ChatScreenState extends State<ChatScreen> {
         SnackBar(content: Text('Error al enviar mensaje: $e')),
       );
     }
+  }
+
+  // Función para mostrar mensajes tipo 'post'
+  Widget buildSharedPostMessage(Map<String, dynamic> data, BuildContext context) {
+    final isMine = data['senderId'] == currentUser?.uid;
+
+    final timestamp = data['timestamp'] as Timestamp?;
+    final formattedTime = timestamp != null
+        ? DateFormat('HH:mm').format(timestamp.toDate())
+        : '';
+
+    final imageUrl = data['imageUrl'] ?? '';
+    final description = data['description'] ?? '';
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Column(
+        crossAxisAlignment: isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: isMine
+                  ? (_favoriteDesign ? const Color(0xFF7F00FF) : Colors.purple)
+                  : (_favoriteDesign ? const Color(0xFF3A1C71) : Colors.grey[800]),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (imageUrl.isNotEmpty)
+                  ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
+                    ),
+                    child: Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          height: 150,
+                          color: Colors.black12,
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        height: 150,
+                        color: Colors.black26,
+                        child: const Center(
+                          child: Icon(Icons.broken_image, size: 50, color: Colors.white38),
+                        ),
+                      ),
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Text(
+                    description,
+                    style: const TextStyle(fontSize: 16, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 2, left: 8, right: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+              children: [
+                Text(
+                  formattedTime,
+                  style: const TextStyle(color: Colors.white60, fontSize: 10),
+                ),
+                const SizedBox(width: 4),
+                if (isMine)
+                  Icon(
+                    Icons.done_all,
+                    size: 14,
+                    color: data['isRead'] == true ? Colors.blueAccent : Colors.white38,
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
